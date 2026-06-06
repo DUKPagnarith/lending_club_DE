@@ -20,7 +20,7 @@ def train_pd(**ctx):
     from scipy.stats import ks_2samp
 
     DATA = "/opt/airflow/data/processed"
-    MODELS = "/opt/airflow/data/models"
+    MODELS = "/opt/airflow/data/artifacts"
 
     train = pd.read_parquet(f"{DATA}/train_preprocessed.parquet")
     test  = pd.read_parquet(f"{DATA}/test_preprocessed.parquet")

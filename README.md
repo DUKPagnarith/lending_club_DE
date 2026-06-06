@@ -27,7 +27,34 @@ ML Training       FastAPI Scoring
 
 ```
 .
-├── api/                  # FastAPI scoring service
+├── pipeline/                 # End-to-end pipeline code
+│   ├── dags/                 # Airflow orchestration DAGs
+│   │   ├── 01_ingestion.py
+│   │   ├── 02_cleaning.py
+│   │   ├── 03_pd_training.py
+│   │   ├── 04_lgd_ead_training.py
+│   │   ├── 05_batch_scoring.py
+│   │   └── 06_monitoring.py
+│   └── spark_jobs/           # PySpark transformation jobs
+│       ├── 01_ingest.py
+│       └── 02_clean.py
+│
+├── models/                   # All model-related Python code
+│   ├── preprocessing/        # Feature engineering & WoE encoding
+│   │   └── woe_encoder.py
+│   ├── training/             # Model training scripts
+│   │   ├── train_pd.py
+│   │   └── train_lgd_ead.py
+│   ├── evaluation/           # Metrics & evaluation utilities
+│   │   └── metrics.py
+│   ├── architectures/        # Model class definitions
+│   │   ├── pd_model.py
+│   │   └── lgd_model.py
+│   └── risk/                 # Business risk logic
+│       ├── expected_loss.py
+│       └── psi_monitor.py
+│
+├── api/                      # FastAPI scoring service
 │   ├── main.py
 │   ├── model_loader.py
 │   ├── routers/
@@ -35,52 +62,40 @@ ML Training       FastAPI Scoring
 │   ├── requirements.txt
 │   └── Dockerfile
 │
-├── dags/                 # Airflow DAGs (pipeline orchestration)
-│   ├── 01_ingestion.py
-│   ├── 02_cleaning.py
-│   ├── 03_pd_training.py
-│   ├── 04_lgd_ead_training.py
-│   ├── 05_batch_scoring.py
-│   └── 06_monitoring.py
-│
-├── spark_jobs/           # PySpark transformation jobs
-│   ├── 01_ingest.py
-│   └── 02_clean.py
-│
-├── ml/                   # Model training & evaluation modules
-│   ├── preprocessing/
-│   ├── training/
-│   ├── evaluation/
-│   └── models/
-│
-├── risk/                 # Risk-specific business logic
-│   ├── expected_loss.py
-│   └── psi_monitor.py
-│
-├── notebooks/            # Exploratory & presentation notebooks
-│   ├── L01_Preprocessing_Feature_Engineering.ipynb
-│   ├── L02_PD_Model_Scorecard.ipynb
-│   ├── L03_LGD_EAD_Expected_Loss.ipynb
-│   └── L04_Population_Stability_Index.ipynb
-│
-├── infrastructure/       # Docker service configs
+├── infrastructure/           # Docker service configurations
 │   ├── airflow/
 │   ├── spark/
 │   ├── mlflow/
 │   ├── postgres/
 │   └── grafana/
 │
-├── tests/                # Unit & integration tests
+├── notebooks/                # Jupyter analysis notebooks
+│   ├── L01_Preprocessing_Feature_Engineering.ipynb
+│   ├── L02_PD_Model_Scorecard.ipynb
+│   ├── L03_LGD_EAD_Expected_Loss.ipynb
+│   └── L04_Population_Stability_Index.ipynb
 │
-├── data/                 # ⚠️ gitignored — not committed
-│   ├── raw/              #   Lending Club CSV (~1.6 GB)
-│   ├── processed/        #   Parquet feature store
-│   ├── models/           #   Serialised model artefacts
-│   └── reports/          #   PSI / scorecard outputs
+├── docs/                     # Documentation & research
+│   ├── Column_Mapping.md
+│   ├── Credit_Risk_Implementation_Plan.md
+│   ├── Literature_review_V1.md
+│   ├── Literature_review_V2.md
+│   └── research.md
 │
-├── docker-compose.yml    # Full stack compose file
-├── Makefile              # Developer shortcuts
-├── .env.example          # Environment template (copy → .env)
+├── scripts/                  # Utility & dev scripts
+│   └── build_presentation.py
+│
+├── data/                     # ⚠️ gitignored — local only
+│   ├── raw/                  #   Lending Club CSV (~1.6 GB)
+│   ├── processed/            #   Parquet feature store
+│   ├── artifacts/            #   Serialised model .pkl files
+│   └── reports/              #   PSI / scorecard outputs
+│
+├── tests/                    # Unit & integration tests
+│
+├── docker-compose.yml        # Full stack compose file
+├── Makefile                  # Developer shortcuts
+├── .env.example              # Environment template (copy → .env)
 ├── requirements_notebooks.txt
 └── SETUP.md
 ```
@@ -118,10 +133,11 @@ Service URLs after boot:
 | Grafana | http://localhost:3000 |
 
 ### 4. Run the pipeline
+Trigger DAGs individually from the Airflow UI, or use:
 ```bash
-make pipeline    # triggers all 6 Airflow DAGs in order
+make train-pd    # Run PD model training
+make train-lgd   # Run LGD/EAD model training
 ```
-Or trigger DAGs individually from the Airflow UI.
 
 ---
 
@@ -150,8 +166,9 @@ Or trigger DAGs individually from the Airflow UI.
 ## 📖 Documentation
 
 - [`SETUP.md`](SETUP.md) — detailed environment setup guide
-- [`Column_Mapping.md`](Column_Mapping.md) — feature descriptions & mappings
-- [`Credit_Risk_Implementation_Plan.md`](Credit_Risk_Implementation_Plan.md) — full technical design doc
+- [`docs/Column_Mapping.md`](docs/Column_Mapping.md) — feature descriptions & mappings
+- [`docs/Credit_Risk_Implementation_Plan.md`](docs/Credit_Risk_Implementation_Plan.md) — full technical design doc
+- [`docs/Literature_review_V2.md`](docs/Literature_review_V2.md) — literature review
 
 ## 🔒 Security
 

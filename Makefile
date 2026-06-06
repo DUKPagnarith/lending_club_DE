@@ -58,10 +58,10 @@ notebook:
 	conda run -n credit_risk jupyter notebook notebooks/
 
 train-pd:
-	conda run -n credit_risk python ml/training/train_pd.py
+	conda run -n credit_risk python models/training/train_pd.py
 
 train-lgd:
-	conda run -n credit_risk python ml/training/train_lgd_ead.py
+	conda run -n credit_risk python models/training/train_lgd_ead.py
 
 score-test:
 	curl -s -X POST http://localhost:8000/score \

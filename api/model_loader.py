@@ -1,6 +1,6 @@
 """
 Loads scorecard, LGD, EAD models from disk at startup.
-Models are stored in /app/data/models/ (mounted from host).
+Models are stored in /app/data/artifacts/ (mounted from host).
 """
 import os
 import json
@@ -13,7 +13,7 @@ _models: dict = {"loaded": False}
 def load_models():
     base = os.getenv("MODEL_PATH", "/app/data")
     proc = f"{base}/processed"
-    mods = f"{base}/models"
+    mods = f"{base}/artifacts"
 
     try:
         scorecard   = pd.read_csv(f"{proc}/scorecard.csv")

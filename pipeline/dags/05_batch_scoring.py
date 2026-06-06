@@ -18,7 +18,7 @@ def batch_score(**ctx):
     from sqlalchemy import create_engine
 
     DATA   = "/opt/airflow/data/processed"
-    MODELS = "/opt/airflow/data/models"
+    MODELS = "/opt/airflow/data/artifacts"
     DB_URL = os.getenv("DATABASE_URL",
              "postgresql://credit_risk:CreditRisk2026!@postgres/credit_risk")
 

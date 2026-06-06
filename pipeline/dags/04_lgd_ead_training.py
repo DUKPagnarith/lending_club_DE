@@ -21,7 +21,7 @@ def train_lgd_ead(**ctx):
     from sklearn.metrics import roc_auc_score, r2_score
 
     DATA   = "/opt/airflow/data/processed"
-    MODELS = "/opt/airflow/data/models"
+    MODELS = "/opt/airflow/data/artifacts"
 
     train = pd.read_parquet(f"{DATA}/train_preprocessed.parquet")
     defaults = train[train["good_bad"] == 0].copy()
