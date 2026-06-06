@@ -1,0 +1,24 @@
+# ── Notebook dependencies (L01–L04) ──────────────────────────────────────
+# Install with: pip install -r requirements_notebooks.txt
+
+# Core data
+pandas>=2.0.0
+numpy>=1.24.0
+pyarrow>=12.0.0          # parquet read/write
+
+# Visualization
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Machine learning
+scikit-learn>=1.3.0
+statsmodels>=0.14.0       # logistic regression with p-values (required for PD model)
+scipy>=1.11.0             # KS statistic, chi-squared tests
+
+# Jupyter
+jupyter>=1.0.0
+ipykernel>=6.0.0
+nbformat>=5.9.0
+
+# Utilities
+tqdm>=4.65.0              # progress bars for large dataset operations

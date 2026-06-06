@@ -1,0 +1,235 @@
+version: "3.9"
+
+x-airflow-common: &airflow-common
+  build: ./infrastructure/airflow
+  env_file: .env
+  environment:
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres/airflow
+    AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY}
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    MLFLOW_TRACKING_URI: http://mlflow:5000
+    MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+    AWS_ACCESS_KEY_ID: ${MINIO_USER}
+    AWS_SECRET_ACCESS_KEY: ${MINIO_PASSWORD}
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./spark_jobs:/opt/airflow/spark_jobs
+    - ./ml:/opt/airflow/ml
+    - ./risk:/opt/airflow/risk
+    - ./data:/opt/airflow/data
+  depends_on:
+    postgres:
+      condition: service_healthy
+
+services:
+
+  # ── PostgreSQL Data Warehouse ─────────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: cr_postgres
+    env_file: .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infrastructure/postgres/init.sql:/docker-entrypoint-initdb.d/01_init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── MinIO Data Lake (S3-compatible) ──────────────────────────────────────
+  minio:
+    image: minio/minio:latest
+    container_name: cr_minio
+    command: server /data --console-address ":9001"
+    env_file: .env
+    environment:
+      MINIO_ROOT_USER: ${MINIO_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"     # MinIO Console UI
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # ── MinIO bucket initialiser (runs once, then exits) ─────────────────────
+  minio-init:
+    image: minio/mc:latest
+    container_name: cr_minio_init
+    depends_on:
+      minio:
+        condition: service_healthy
+    env_file: .env
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 $${MINIO_USER} $${MINIO_PASSWORD};
+      mc mb --ignore-existing local/landing-zone;
+      mc mb --ignore-existing local/mlflow-artifacts;
+      mc mb --ignore-existing local/spark-output;
+      echo 'MinIO buckets created';
+      "
+
+  # ── Apache Spark Master ───────────────────────────────────────────────────
+  spark-master:
+    build: ./infrastructure/spark
+    container_name: cr_spark_master
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+    ports:
+      - "8080:8080"     # Spark Web UI
+      - "7077:7077"     # Spark Master port
+
+  spark-worker:
+    build: ./infrastructure/spark
+    container_name: cr_spark_worker
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=4G
+      - SPARK_WORKER_CORES=2
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+    depends_on:
+      - spark-master
+    ports:
+      - "8082:8081"     # Worker UI
+
+  # ── Apache Airflow ────────────────────────────────────────────────────────
+  airflow-init:
+    <<: *airflow-common
+    container_name: cr_airflow_init
+    command: >
+      bash -c "
+        airflow db init &&
+        airflow users create
+          --username ${AIRFLOW_ADMIN_USER}
+          --password ${AIRFLOW_ADMIN_PASSWORD}
+          --firstname Admin
+          --lastname User
+          --role Admin
+          --email admin@bank.com
+      "
+    restart: "no"
+
+  airflow-webserver:
+    <<: *airflow-common
+    container_name: cr_airflow_web
+    command: webserver
+    ports:
+      - "8081:8080"     # Airflow Web UI
+    restart: unless-stopped
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-scheduler:
+    <<: *airflow-common
+    container_name: cr_airflow_scheduler
+    command: scheduler
+    restart: unless-stopped
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+  # ── MLflow Tracking Server ────────────────────────────────────────────────
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.10.0
+    container_name: cr_mlflow
+    env_file: .env
+    entrypoint: >
+      /bin/sh -c "
+        pip install --quiet psycopg2-binary boto3 &&
+        mlflow server
+          --backend-store-uri postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres/credit_risk
+          --default-artifact-root s3://mlflow-artifacts/
+          --host 0.0.0.0
+          --port 5000
+      "
+    environment:
+      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+      AWS_ACCESS_KEY_ID: ${MINIO_USER}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_PASSWORD}
+    ports:
+      - "5001:5000"     # MLflow UI (5000 taken by macOS AirPlay)
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+
+  # ── FastAPI Scoring Service ───────────────────────────────────────────────
+  api:
+    build: ./api
+    container_name: cr_api
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres/credit_risk
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+      AWS_ACCESS_KEY_ID: ${MINIO_USER}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_PASSWORD}
+      REDIS_URL: redis://redis:6379
+      MODEL_PATH: /app/data
+    volumes:
+      - ./data:/app/data:ro
+    ports:
+      - "8000:8000"     # API endpoint
+    depends_on:
+      - mlflow
+      - redis
+      - postgres
+    restart: unless-stopped
+
+  # ── Redis (Feature Cache) ─────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: cr_redis
+    ports:
+      - "6379:6379"
+
+  # ── Prometheus ────────────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: cr_prometheus
+    volumes:
+      - ./infrastructure/grafana/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=30d"
+
+  # ── Grafana ───────────────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:latest
+    container_name: cr_grafana
+    env_file: .env
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3000:3000"     # Grafana UI
+    depends_on:
+      - prometheus
+
+volumes:
+  postgres_data:
+  minio_data:
+  grafana_data:

@@ -1,0 +1,83 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Lending Club DE — Credit Risk Project  .gitignore
+# ──────────────────────────────────────────────────────────────────────────────
+
+# ── Secrets & Environment ─────────────────────────────────────────────────────
+.env
+*.pem
+*.key
+secrets/
+
+# ── Datasets (large files – store in MinIO / DVC / external storage) ──────────
+data/raw/
+data/processed/
+data/reports/
+data/models/
+*.csv
+*.parquet
+*.orc
+*.avro
+*.json.gz
+
+# ── Trained ML models & scalers ───────────────────────────────────────────────
+*.pkl
+*.joblib
+*.h5
+*.pt
+*.onnx
+mlruns/
+mlartifacts/
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+pip-log.txt
+pip-delete-this-directory.txt
+
+# ── Virtual environments ──────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+.env/
+ENV/
+
+# ── Jupyter Notebooks checkpoints ────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# ── Docker & Compose volumes / runtime ───────────────────────────────────────
+postgres_data/
+minio_data/
+grafana_data/
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+logs/
+*.log
+airflow_logs/
+
+# ── OS & IDE artefacts ────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ── Spark ────────────────────────────────────────────────────────────────────
+spark-warehouse/
+metastore_db/
+derby.log
+
+# ── Misc ──────────────────────────────────────────────────────────────────────
+.cache/
+tmp/
+temp/
