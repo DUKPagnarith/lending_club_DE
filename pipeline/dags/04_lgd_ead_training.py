@@ -4,14 +4,12 @@ DAG 04 — Train LGD (two-stage) and EAD models, register in MLflow
 from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.python import PythonOperator
+from airflow.sensors.external_task import ExternalTaskSensor
 
 default_args = {"owner": "credit_risk", "retries": 1, "retry_delay": timedelta(minutes=5)}
 
-FEATURES = ["funded_amnt", "term_int", "int_rate", "dti", "fico_score",
-            "annual_inc", "revol_util", "inq_last_6mths"]
-
-
 def train_lgd_ead(**ctx):
+    import json
     import joblib
     import numpy as np
     import pandas as pd
@@ -23,10 +21,13 @@ def train_lgd_ead(**ctx):
     DATA   = "/opt/airflow/data/processed"
     MODELS = "/opt/airflow/data/artifacts"
 
+    with open(f"{DATA}/dummy_cols.json") as f:
+        DUMMY_COLS = json.load(f)
+
     train = pd.read_parquet(f"{DATA}/train_preprocessed.parquet")
     defaults = train[train["good_bad"] == 0].copy()
-    feats = [c for c in FEATURES if c in defaults.columns]
-    X_def = defaults[feats].fillna(defaults[feats].median())
+    feats = [c for c in DUMMY_COLS if c in defaults.columns]
+    X_def = defaults[feats].fillna(0)
 
     mlflow.set_experiment("credit_risk_lgd_ead")
     with mlflow.start_run(run_name=f"lgd_ead_{ctx['ds_nodash']}"):
@@ -74,4 +75,13 @@ with DAG(
     tags=["credit_risk", "ml", "lgd", "ead"],
 ) as dag:
 
+    wait_for_pd = ExternalTaskSensor(
+        task_id="wait_for_pd_training",
+        external_dag_id="credit_risk_pd_training",
+        external_task_id="train_pd_model",
+        timeout=7200, poke_interval=60, mode="reschedule",
+    )
+
     train_task = PythonOperator(task_id="train_lgd_ead", python_callable=train_lgd_ead)
+
+    wait_for_pd >> train_task

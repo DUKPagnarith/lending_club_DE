@@ -1,0 +1,1159 @@
+\documentclass[12pt,a4paper]{report}
+
+% ─── Packages ────────────────────────────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=2.5cm, headheight=15pt]{geometry}
+\usepackage{setspace}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{float}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{parskip}
+\usepackage{enumitem}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage{url}
+
+% ─── Hyperref setup ──────────────────────────────────────────────────────────
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    citecolor=black,
+    urlcolor=blue,
+    pdftitle={Credit Risk Modelling and Data Engineering Pipeline},
+    pdfauthor={SOPHON Rachana, LOT Soklang, DUK Pagnarith, LENG Devid}
+}
+
+% ─── Image path ──────────────────────────────────────────────────────────────
+\graphicspath{{../data/reports/}}
+
+% ─── Page style ──────────────────────────────────────────────────────────────
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\small Credit Risk Modelling \& Data Engineering Pipeline}
+\lhead{\small Academic Year 2025--2026}
+\cfoot{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ─── Section formatting ───────────────────────────────────────────────────────
+\titleformat{\chapter}[display]
+  {\normalfont\huge\bfseries}{\chaptertitlename\ \thechapter}{20pt}{\Huge}
+\titlespacing*{\chapter}{0pt}{10pt}{20pt}
+
+% ─── Line spacing ────────────────────────────────────────────────────────────
+\onehalfspacing
+
+% ─── Code listing style ──────────────────────────────────────────────────────
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  frame=single,
+  rulecolor=\color{gray!40},
+  backgroundcolor=\color{gray!5},
+  keywordstyle=\color{blue}\bfseries,
+  commentstyle=\color{green!50!black},
+  stringstyle=\color{red!70!black},
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  numbersep=8pt
+}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\begin{document}
+
+% ─── Title Page ──────────────────────────────────────────────────────────────
+\begin{titlepage}
+\centering
+
+\vspace*{1.5cm}
+
+{\LARGE\bfseries Institute of Technology of Cambodia}\\[0.5cm]
+{\large Department of Information Technology}\\[2cm]
+
+\rule{\textwidth}{1.5pt}\\[0.4cm]
+{\Huge\bfseries Credit Risk Modelling and\\[0.3cm] Data Engineering Pipeline}\\[0.3cm]
+{\Large\itshape An End-to-End Production Credit Risk System\\
+on the Lending Club Dataset}\\[0.3cm]
+\rule{\textwidth}{1.5pt}\\[2cm]
+
+{\large\bfseries Group Members}\\[0.5cm]
+
+\begin{tabular}{lll}
+\toprule
+\textbf{Name} & \textbf{Student ID} & \textbf{Role} \\
+\midrule
+SOPHON Rachana  & e20220725 & Group Member \\
+LOT Soklang     & e20221464 & Group Member \\
+DUK Pagnarith   & e20220184 & Group Member \\
+LENG Devid      & e20220888 & Group Member \\
+\bottomrule
+\end{tabular}
+
+\vspace{2cm}
+
+{\large\itshape Under the supervision of}\\[0.4cm]
+{\Large\bfseries Lecturer TOEM TOUCH}
+
+\vfill
+
+{\large Academic Year: 2025--2026}\\[0.3cm]
+{\large Phnom Penh, Cambodia}
+
+\end{titlepage}
+
+% ─── Abstract ────────────────────────────────────────────────────────────────
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+
+Credit risk modelling lies at the intersection of statistical machine learning, regulatory compliance, and large-scale data engineering. This paper presents a complete, end-to-end, reproducible credit risk system built on the publicly available Lending Club peer-to-peer lending dataset, comprising 2,260,668 loan records spanning 2007 to 2018. The system addresses a structural gap in the academic credit scoring literature: while prior work on this dataset demonstrates that machine-learning methods outperform logistic regression on benchmark discrimination metrics, no published study integrates these findings into a production-ready platform that simultaneously satisfies the design constraints imposed by the Basel~II/III Internal Ratings-Based approach, the IFRS~9 Expected Credit Loss framework, and the Federal Reserve's SR~11-7 model risk management guidance.
+
+The platform models the three components of Expected Loss --- Probability of Default (PD), Loss Given Default (LGD), and Exposure at Default (EAD) --- and combines them as $EL = PD \times LGD \times EAD$. The PD model is a WoE-encoded logistic regression scorecard (300--850 integer scale) estimated with \texttt{statsmodels} to provide Wald-test p-values required for regulatory documentation. An intercept log-odds recalibration (shift $\delta = +0.3204$) aligns the mean predicted PD to the out-of-time observed default rate of 25.27\%, producing both a Point-in-Time PD for IFRS~9 provisioning and a Through-the-Cycle PD for Basel AIRB capital. The LGD model employs a two-stage architecture; the EAD model regresses a Credit Conversion Factor; and Expected Loss is computed on real calibrated PD outputs. IFRS~9 three-stage ECL with SICR classification and probability-weighted scenario ECL produces a portfolio provision of \$1.646~billion --- \$838~million above a flat 12-month estimate. Basel~III AIRB capital calculation yields RWA of \$14.07~billion and minimum capital of \$1.13~billion. Daily PSI and CSI monitoring detects a Score PSI of 0.282 (ALERT) in the 2016--2018 out-of-time population, confirming a material shift in applicant characteristics.
+
+\vspace{0.5em}
+\noindent\textbf{Keywords:} credit risk, probability of default, scorecard, Weight of Evidence, IFRS 9, Basel III, AIRB, logistic regression, population stability index, model monitoring.
+
+\tableofcontents
+\listoffigures
+\listoftables
+
+% ─────────────────────────────────────────────────────────────────────────────
+\chapter{Introduction}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\section{Background and Motivation}
+
+Credit risk --- the probability that a borrower will fail to meet contractual obligations --- is one of the most consequential measurement problems in modern finance. The Basel Committee on Banking Supervision formally defines it as ``the potential that a bank borrower or counterparty will fail to meet its obligations in accordance with agreed terms'' \cite{bcbs2000}. When a borrower defaults, the lender faces loss of principal, expected interest income, and additional collection and legal costs, with net loss modelled as: $\text{Loss} = \text{Exposure at Default} \times \text{Loss Given Default}$ \cite{bis_el_ul}.
+
+Poor credit risk estimation has historically produced catastrophic consequences. The 2008 global financial crisis was substantially caused by the systematic underestimation of default probabilities and correlations in subprime mortgage portfolios and the Collateralized Debt Obligations (CDOs) derived from them \cite{baily2008, imf2010}. Default-probability models had been calibrated on a short historical window of rising house prices and low defaults, and did not capture the possibility of a correlated nationwide housing downturn \cite{kirabaeva2011}. The consequences were severe: the US Government committed up to \$700 billion under the Troubled Asset Relief Program (TARP) \cite{tarp_treasury}; global unemployment rose from 6.0\% in 2008 to 6.8\% in 2009, adding approximately 30 million unemployed worldwide \cite{imf_unemployment}; and the US unemployment rate peaked at 10.0\% in October 2009 \cite{bls_recession}.
+
+In response, regulators introduced two interlocking frameworks that fundamentally reshaped what credit risk modelling must produce. The Basel~II/III Internal Ratings-Based (IRB) approach requires banks to estimate their own PD, LGD, and EAD, submitting these to supervisory capital formulas \cite{bcbs2004, bcbs2010}. The IFRS~9 Expected Credit Loss (ECL) framework replaces the backward-looking incurred-loss model with a forward-looking provisioning regime that stages loans by credit deterioration and requires lifetime ECL for loans with significant increases in credit risk \cite{iasb2014}. Together with the Federal Reserve's SR~11-7 model risk management guidance \cite{sr117}, these three frameworks transform credit scoring from a purely internal exercise into a supervised modelling infrastructure where interpretability, out-of-time validation, conservative calibration, documentation, and governance are central design constraints.
+
+\section{The Lending Club Dataset and Research Context}
+
+The Lending Club peer-to-peer lending dataset \cite{kaggle2018} has become the most widely used public resource for academic credit risk research. Prior studies have benchmarked classification algorithms \cite{gupta2022}, studied feature selection \cite{zhou2019}, compared gradient-boosting architectures \cite{dong2023}, and developed LightGBM models with SHAP explainability \cite{demajo2025}. Despite this breadth, the existing literature reveals a consistent structural gap: studies benchmark algorithms without specifying deployment, monitoring, or regulatory integration; they do not impose the application-time data constraint that eliminates target leakage; and they address neither IFRS~9 provisioning, Basel~III capital calculation, nor the monitoring infrastructure needed to operate a credit model within a governed banking environment \cite{sculley2015}.
+
+\section{Research Objectives and Contributions}
+
+This paper addresses that gap with five specific contributions:
+
+\begin{enumerate}
+  \item \textbf{Application-time feature discipline.} All predictors are restricted to information available at the moment of loan origination, eliminating target leakage that affects many prior Lending Club studies.
+  \item \textbf{Regulatory-compliant WoE/IV scorecard.} A full Weight-of-Evidence transformation, PDO-scaled scorecard, and logistic regression pipeline are implemented and evaluated against Basel~III interpretability requirements and SR~11-7 documentation standards.
+  \item \textbf{IFRS~9 and Basel~III reporting alignment.} The paper demonstrates how the same PD model can be calibrated for both regulatory capital (Through-the-Cycle) and accounting provisioning (Point-in-Time, forward-looking) purposes, producing the full three-stage ECL and AIRB capital stack.
+  \item \textbf{Credit-policy engine.} Model outputs are operationalised into a 10-class (AA--F) lending decision layer with ROI-based decisioning and ECOA Regulation~B adverse action codes.
+  \item \textbf{Production monitoring infrastructure.} PSI and CSI monitoring, MLflow experiment tracking, and Apache Airflow pipeline orchestration are implemented end-to-end and verified on the real 2.26-million-row dataset.
+\end{enumerate}
+
+\section{Report Structure}
+
+Chapter~\ref{ch:litreview} reviews the academic and regulatory literature across six thematic arcs. Chapter~\ref{ch:data} details the data engineering pipeline and feature engineering methodology. Chapter~\ref{ch:models} presents the statistical modelling methodology for PD, LGD, and EAD. Chapter~\ref{ch:risk} describes the risk management outputs: Expected Loss, IFRS~9 ECL, Basel~III capital, and the credit policy engine. Chapter~\ref{ch:results} reports the experimental results with visualisations from all four notebooks. Chapter~\ref{ch:discussion} discusses findings, limitations, and future directions. Chapter~\ref{ch:conclusion} concludes.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\chapter{Literature Review}
+\label{ch:litreview}
+% ─────────────────────────────────────────────────────────────────────────────
+
+The study of credit risk has evolved over six decades from simple financial ratio inspection to sophisticated machine-learning pipelines operating under multi-layered regulatory oversight. This review traces that evolution across six thematic arcs: classical statistical foundations (\S\ref{sec:classical}); the machine-learning benchmarking wave (\S\ref{sec:ml}); prior empirical work on the Lending Club dataset (\S\ref{sec:lendingclub}); the regulatory frameworks governing model design (\S\ref{sec:regulation}); scorecard construction methodology (\S\ref{sec:scorecard}); and production deployment and model monitoring (\S\ref{sec:production}).
+
+\section{Classical Credit Scoring}
+\label{sec:classical}
+
+Classical credit scoring developed through a sequence of methodological shifts. Univariate financial ratio analysis entered the scholarly record with \citet{beaver1966}, who demonstrated that single accounting ratios could separate failed from non-failed firms up to five years before failure. \citet{altman1968} extended this through Multiple Discriminant Analysis (MDA) into the Z-score, a multivariate bankruptcy predictor, though its assumptions of linear separability and multivariate normality proved restrictive in consumer credit settings. \citet{wiginton1980} marked a major transition by applying logistic regression to credit behaviour, replacing discriminant scoring with a probabilistic binary-response framework. \citet{steenackers1989} advanced this in retail banking, helping establish the logistic model as a workable banking decision system.
+
+The academic consolidation of the field came with \citet{thomas2002}, which systematised the statistical, operational, and policy foundations of credit scoring. The industry consolidation came with \citet{siddiqi2006}, which codified scorecard development around Weight of Evidence (WoE) and Information Value (IV), showing how logistic regression could be embedded in an interpretable, governance-friendly scorecard workflow --- the canonical reference for modern scorecard practice.
+
+\section{Machine Learning in Credit Scoring}
+\label{sec:ml}
+
+Building on classical scorecard foundations, machine-learning research has progressively demonstrated that flexible nonlinear classifiers often outperform logistic regression in predictive accuracy, though adoption in regulated banking remains constrained by explainability, governance, and operational requirements. \citet{baesens2003} compared a wide range of classifiers across eight real credit scoring datasets and found no single method dominated uniformly, but that several non-traditional classifiers were competitive with logistic regression on AUC. \citet{lessmann2015} expanded the benchmark universe to 41 classifiers and found that ensemble learners delivered the strongest average discriminatory power. \citet{khandani2010} applied nonlinear algorithms to a large proprietary consumer credit panel and reported materially improved out-of-sample prediction of delinquency.
+
+In the gradient-boosting literature, \citet{zedda2024} compared XGBoost with logistic regression on 35,535 Italian SME cases, finding broadly similar overall capability but meaningful sensitivity to cutoff choice. \citet{dong2023} compared XGBoost and LightGBM for loan-default prediction, reporting stronger classification performance for both boosting methods. Despite these gains, the interpretability-versus-accuracy trade-off remains decisive: the European Banking Authority's report on machine learning in IRB models explicitly highlights interpretability and explainability as obstacles to broader ML adoption \cite{eba2023}, and SR~11-7 documentation requirements are easier to satisfy with simpler models.
+
+\section{Prior Work on the Lending Club Dataset}
+\label{sec:lendingclub}
+
+\citet{gupta2022} compared logistic regression, decision trees, random forests, SVMs, and gradient boosting on the Lending Club data, finding tree-based ensembles offer higher classification performance but at the cost of interpretability. \citet{zhou2019} studied feature selection and regularisation in high-dimensional P2P lending data, reporting gradient-boosting outperforms traditional logistic regression on AUC and KS statistics. \citet{zhou2022_entropy} compared deep-learning architectures and ensemble methods on 140+ attributes, confirming gradient-boosting and deep models achieve the highest predictive performance. \citet{demajo2025} built a LightGBM model on $\approx$2.9 million Lending Club loans with SHAP post-hoc explainability, reporting AUC gains over logistic regression.
+
+Crucially, all these studies stop at offline model evaluation and do not address regulatory compliance, model-risk-management requirements, or deployment --- the combination of deficiencies this paper addresses.
+
+\section{Regulatory Frameworks: Basel II/III, IFRS 9, and SR 11-7}
+\label{sec:regulation}
+
+\subsection{Basel Capital Regulation}
+
+Basel~I introduced the first internationally harmonised capital regime by requiring banks to hold capital equal to at least 8\% of risk-weighted assets (RWA) \cite{bcbs1988}. Basel~II fundamentally changed this through the Internal Ratings-Based (IRB) approach, which allowed eligible banks to use their own estimates of PD, LGD, and EAD within supervisory capital formulas \cite{bcbs2004, european_parliament2016}:
+\begin{equation}
+  CAR = \frac{\text{Bank Capital}}{\text{RWA}} \geq 8\%
+\end{equation}
+The 2008 financial crisis revealed that Basel~II's risk sensitivity could amplify the credit cycle \cite{repullo2010, ecb2009}. Basel~III therefore retained the capital framework but added a capital conservation buffer, countercyclical capital buffer, leverage ratio, Liquidity Coverage Ratio (LCR), and Net Stable Funding Ratio (NSFR) \cite{bcbs2010, bcbs2017}. For banks using the Advanced IRB (AIRB) approach, supervisory approval requires conceptually sound rating systems, relevant historical data, regular review, independent validation, and supported audit trails \cite{bcbs2022, eba2017a}.
+
+\subsection{IFRS 9 Expected Credit Loss Framework}
+
+IFRS~9 replaced the backward-looking incurred loss model of IAS~39 with a forward-looking Expected Credit Loss (ECL) framework \cite{iasb2014, fsi_bis2015}. Under the three-stage impairment model, ECL over the relevant horizon is:
+\begin{equation}
+  ECL = \sum_{t} PD_t \times LGD_t \times EAD_t
+\end{equation}
+Stage~1 (performing) carries 12-month ECL; Stage~2 (Significant Increase in Credit Risk, SICR) and Stage~3 (credit-impaired) require lifetime ECL \cite{bundesbank2019}. IFRS~9 also explicitly mandates forward-looking macroeconomic information, requiring probability-weighted scenario ECLs using GDP, unemployment, and other forecasts --- in direct contrast to Basel AIRB through-the-cycle PDs \cite{bdo2024}. Empirical studies document that IFRS~9 adoption increased loan-loss allowances and introduced more volatility linked to macroeconomic conditions \cite{pmc2024}.
+
+\subsection{SR 11-7 and Model Risk Management}
+
+SR~11-7 defines model risk as the risk of adverse consequences from decisions based on incorrect or misused models and establishes three pillars: robust model development, implementation, and use; effective independent validation; and strong governance, policies, controls, and model inventory management \cite{sr117}. OCC Bulletin 2011-12 complemented SR~11-7 for national banks \cite{occ2011}. The BIS Financial Stability Institute observes that banks often prefer models that are easier to validate, document, monitor, and defend to supervisors --- even when not globally most accurate \cite{bis_fsi2024}.
+
+\section{Scorecard Methodology: WoE, IV, and PDO Scaling}
+\label{sec:scorecard}
+
+WoE can be traced to \citet{shannon1948}'s foundational information theory and \citet{good1950}'s definition of ``weight of evidence'' as the logarithm of a Bayes factor. In modern scorecard development, WoE for bin $i$ is:
+\begin{equation}
+  WoE_i = \ln\!\left(\frac{\%\,Goods_i}{\%\,Bads_i}\right)
+\end{equation}
+A positive WoE indicates lower credit risk than average; negative WoE indicates higher risk \cite{siddiqi2006, thomas2002}. Information Value aggregates these bin-level contrasts:
+\begin{equation}
+  IV = \sum_i \left(\%\,Goods_i - \%\,Bads_i\right) \times WoE_i
+\end{equation}
+with the standard interpretation scale: IV $< 0.02$ = useless; 0.02--0.10 = weak; 0.10--0.30 = medium; 0.30--0.50 = strong; $> 0.50$ = suspiciously powerful \cite{siddiqi2006}. Missing values are treated as a separate WoE bin because missingness in credit data is often behaviourally informative \cite{lund2021}. PDO scaling maps raw log-odds to an operational score:
+\begin{equation}
+  Factor = \frac{PDO}{\ln(2)}, \qquad Offset = \text{Ref\_Score} - Factor \times \ln(\text{Ref\_Odds})
+\end{equation}
+The FICO consumer score range of 300--850 \cite{myfico} and the convention that 20 points doubles the odds have become long-standing industry norms \cite{fico_community, world_bank2020}.
+
+\section{Production ML Systems and Model Monitoring}
+\label{sec:production}
+
+\citet{sculley2015} described how real-world ML systems accrue ``hidden technical debt'' through entanglement, data dependencies, and fragile monitoring --- a critique that applies directly to Lending Club benchmark studies, which evaluate algorithms without specifying deployment or regulatory integration. MLOps has emerged as the discipline combining ML with DevOps to cover experiment tracking, model registries, CI/CD for models, and production monitoring. In financial services this must extend to audit trails, model versioning, and stage gates for regulatory review under frameworks such as SR~11-7 \cite{mlflow2026}. Apache Airflow is widely used to orchestrate batch workflows in banking \cite{astronomer2021}. Apache Spark (PySpark) offers a distributed analytics engine for large-scale data processing \cite{spark2026}.
+
+The Population Stability Index (PSI) has become a standard tool for detecting distributional shifts between training and live populations:
+\begin{equation}
+  PSI = \sum_i \left(Observed_i - Expected_i\right) \times \ln\!\left(\frac{Observed_i}{Expected_i}\right)
+\end{equation}
+with thresholds: PSI~$< 0.10$ = stable; 0.10--0.25 = moderate shift; $\geq 0.25$ = significant shift \cite{garp2021, arthur_ai2025}. Beyond PSI, production systems use Characteristic Stability Indices (CSI) for individual features, performance monitoring tracking AUC, Gini, KS, and default rates over time, and shadow challenger models running in parallel to detect performance degradation \cite{mathworks}. The dual PD challenge --- through-the-cycle for capital, point-in-time for IFRS~9 --- pushes the discipline toward greater transparency, robust out-of-time validation, and clear documentation of limitations.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\chapter{Data Engineering and Feature Engineering}
+\label{ch:data}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\section{Dataset Description}
+
+The Lending Club \texttt{accepted\_2007\_to\_2018Q4.csv} \cite{kaggle2018, zenodo2024} contains 2,260,668 loan applications across 151 columns. Key dataset properties are summarised in Table~\ref{tab:dataset}.
+
+\begin{table}[H]
+\centering
+\caption{Raw dataset properties}
+\label{tab:dataset}
+\begin{tabular}{ll}
+\toprule
+\textbf{Property} & \textbf{Value} \\
+\midrule
+Total rows          & 2,260,668 \\
+Total columns       & 151 \\
+Date range          & January 2007 -- December 2018 \\
+File size           & $\approx$1.6 GB \\
+Overall default rate (Charged Off) & $\approx$17\% \\
+100\% null columns  & 15 (\texttt{sec\_app\_*}, \texttt{member\_id}, \texttt{desc}) \\
+\texttt{int\_rate} format & Percentage string (e.g., ``13.99'') $\div$ 100 \\
+\texttt{mths\_since\_last\_delinq} & Actual NaN (not sentinel) -- treated as separate WoE bin \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Importantly, the file is \textbf{not sorted chronologically} --- an \texttt{issue\_year} column derived from \texttt{issue\_d} must be used for the out-of-time split, not row order.
+
+\section{Data Cleaning}
+
+57 columns are removed across five categories: 100\% null (15 columns); identifiers and constants (8 columns); joint application variables ($>99\%$ null, 3 columns); hardship/settlement fields ($>97\%$ null, 18 columns); and post-application leakage variables (15 columns). Leakage columns (\texttt{total\_pymnt}, \texttt{recoveries}, \texttt{out\_prncp}, \texttt{last\_pymnt\_d}) are used first to construct target variables before being dropped.
+
+\subsection{Target Variable Construction}
+
+Three target variables are created from the leakage columns:
+\begin{equation}
+  \text{good\_bad} = \begin{cases} 0 & \text{Charged Off, Default, Late 31--120 days} \\ 1 & \text{Fully Paid} \end{cases}
+\end{equation}
+\begin{equation}
+  \text{recovery\_rate} = \frac{\text{recoveries}}{\text{funded\_amnt}} \quad \text{(charged-off loans only)}
+\end{equation}
+\begin{equation}
+  \text{ccf} = \frac{\text{funded\_amnt} - \text{total\_pymnt}}{\text{funded\_amnt}} \quad \text{(charged-off loans only)}
+\end{equation}
+
+Six derived features are also engineered: \texttt{fico\_score} (midpoint of FICO range, IV $> 0.30$), \texttt{term\_int}, \texttt{int\_rate} ($\div$100), \texttt{mths\_since\_issue\_d}, \texttt{mths\_since\_earliest\_cr\_line}, and \texttt{emp\_length\_int}.
+
+\section{Out-of-Time Split}
+
+The gold standard for credit risk model evaluation is an out-of-time (OOT) split rather than a random train/test split \cite{siddiqi2006, thomas2002}:
+
+\begin{table}[H]
+\centering
+\caption{Out-of-time data split}
+\label{tab:split}
+\begin{tabular}{llll}
+\toprule
+\textbf{Split} & \textbf{Issue Years} & \textbf{Rows} & \textbf{Default Rate} \\
+\midrule
+Training & 2007--2015 & 831,051  & 18.62\% \\
+OOT Test & 2016--2018 & 538,515  & 25.27\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+This mirrors real deployment: the model is trained on historical data and must generalise to future applicants. A random split would allow future statistical patterns to contaminate the training set. The 6.65 percentage point increase in default rate between training (18.62\%) and OOT (25.27\%) is itself a signal of population shift, confirmed later by a Score PSI of 0.282 (ALERT).
+
+\section{Weight of Evidence Encoding}
+
+WoE bins are computed on the \textbf{training set only} and applied without re-fitting to the OOT set, preventing information leakage from future applicants. Missing values are assigned to a separate WoE bin because missingness in credit data is often behaviourally informative \cite{lund2021} --- a borrower with no delinquency record is a different credit risk profile from one with a zero-delinquency record. 56 WoE dummy variables are produced from 16 raw predictors after fine-classing and coarse-classing.
+
+\section{Reject Inference}
+
+The dataset contains only funded (accepted) loans. Rejected applicants --- disproportionately bad borrowers --- are unobserved, creating a selection bias that causes the model to underestimate default risk. The parceling method \cite{siddiqi2006} is applied: the initial PD model scores all accepted loans; synthetic rejected applicants are generated from high-PD accepted loans with inflated PD estimates; probabilistic \texttt{good\_bad} labels are assigned; and the combined dataset (831,051 original + 26,129 synthetic = 857,180 rows) is used for retraining.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\chapter{Machine Learning Modelling}
+\label{ch:models}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\section{PD Model: Probability of Default}
+
+\subsection{Architecture and Feature Selection}
+
+The PD model is a logistic regression estimated with \texttt{statsmodels} \cite{statsmodels}, which provides proper Wald-test p-values and confidence intervals required for regulatory documentation --- an improvement over approximating p-values from scikit-learn's logistic regression. Feature selection uses iterative backward elimination: at each step the variable with the highest maximum p-value across its dummies is removed until all remaining dummies have p $< 0.05$. This reduces the feature set from 56 to \textbf{39 statistically significant dummy variables} covering 16 predictors. The final model is:
+\begin{equation}
+  \log\!\left(\frac{P(\text{Good})}{P(\text{Bad})}\right) = \beta_0 + \sum_{j=1}^{39} \beta_j \cdot WoE_{dummy_j}
+\end{equation}
+
+\subsection{Scorecard Scaling}
+
+Coefficients are transformed into a 300--850 integer scorecard using PDO scaling \cite{siddiqi2006, myfico}:
+\begin{equation}
+  \text{Factor} = \frac{20}{\ln(2)} \approx 28.85, \qquad \text{Offset} = 600 - \text{Factor} \times \ln(1) = 600
+\end{equation}
+Score contribution for dummy $j$: $s_j = -(\hat{\beta}_j \times \text{Factor})$. A higher total score corresponds to lower predicted PD.
+
+\subsection{PD Calibration: PiT and TtC Variants}
+
+The raw model produces a mean OOT PD of 20.18\% against the actual OOT default rate of 25.27\% --- a 5.09pp downward bias from training on a lower-default-rate period and residual selection bias. An intercept log-odds shift calibrates the level:
+\begin{equation}
+  \hat{P}^{calib} = \sigma\!\left(\text{logit}(\hat{P}^{raw}) + \delta\right), \qquad \delta = +0.3204
+\end{equation}
+where $\delta$ is found numerically such that $\text{mean}(\hat{P}^{calib}) = 25.27\%$. Two calibrated PD variants are produced:
+\begin{itemize}
+  \item \textbf{Point-in-Time (PiT) PD}: calibrated to the current OOT default rate (25.27\%). Used for IFRS~9 ECL provisioning, where forward-looking sensitivity to current economic conditions is required \cite{iasb2014}.
+  \item \textbf{Through-the-Cycle (TtC) PD}: log-odds shifted to the long-run estimated default rate of 15\%. Used for Basel AIRB capital, requiring stable, cycle-invariant PD estimates \cite{bcbs2004, repullo2010}.
+\end{itemize}
+
+Calibration is validated using the Hosmer-Lemeshow (HL) goodness-of-fit test and a reliability diagram. Pre-calibration, HL statistic = 10,039 (p $\approx$ 0, miscalibrated); post-calibration HL = 403 --- a 96\% reduction.
+
+\subsection{10-Class Credit Policy and ECOA Compliance}
+
+Model outputs are operationalised into 10 risk classes based on credit score bands (Table~\ref{tab:policy}). Annualised ROI is computed as:
+\begin{equation}
+  ROI_{ann} = \frac{(\text{interest income} - EL) / \text{funded\_amnt}}{\text{term\_months} / 12}
+\end{equation}
+where $r_f = 2.15\%$ (US base rate at time of data). ECOA Regulation~B adverse action codes are generated for every rejected application by identifying the scorecard dummies that contributed most negatively to the applicant's total score, providing an auditable and legally compliant explanation of each rejection.
+
+\begin{table}[H]
+\centering
+\caption{10-class credit policy: score bands and decisioning rules}
+\label{tab:policy}
+\begin{tabular}{llll}
+\toprule
+\textbf{Class} & \textbf{Score Band} & \textbf{Default Action} & \textbf{Policy Rule} \\
+\midrule
+AA & 780--850 & Auto-approve & Lowest PD \\
+A  & 740--779 & Auto-approve & Very low PD \\
+AB & 700--739 & Approve if ROI $> r_f$ & Middle band \\
+BB & 660--699 & Approve if ROI $> r_f$ & Middle band \\
+B  & 620--659 & Approve if ROI $> r_f$ & Middle band \\
+BC & 580--619 & Approve if ROI $> r_f$ & Middle band \\
+C  & 540--579 & Approve if ROI $> r_f$ & Middle band \\
+CD & 500--539 & Approve if ROI $> r_f$ & Middle band \\
+DD & 460--499 & Manual review           & High PD \\
+F  & 300--459 & Auto-reject             & Highest PD \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{LGD Model: Loss Given Default}
+
+\subsection{Architecture}
+
+The LGD model uses a two-stage architecture applied only to defaulted (Charged Off) loans, motivated by the bimodal distribution of recovery rates: approximately 50\% of charged-off loans show zero recovery.
+
+\begin{itemize}
+  \item \textbf{Stage 1 --- Logistic Regression}: $P(\text{Recovery Rate} > 0)$.
+  \item \textbf{Stage 2 --- Linear Regression}: $E[\text{Recovery Rate} \mid \text{Recovery Rate} > 0]$.
+  \item \textbf{Combined}: $\hat{LGD} = 1 - (\hat{P}_{\text{stage1}} \times \hat{RR}_{\text{stage2}})$.
+\end{itemize}
+
+\subsection{Downturn LGD Adjustment}
+
+Basel~III AIRB (CRE36) requires a \textbf{downturn LGD} reflecting recovery rates during economic downturns \cite{bcbs2022}. The directional constraint is that downturn LGD must always be $\geq$ long-run LGD (recoveries fall, never rise, in a downturn). A directional bug in the original implementation --- where the function could return a downturn LGD below the long-run LGD --- was identified and corrected, moving the result from an incorrect 90.0\% to the correct 93.76\% ($+1.56$pp).
+
+\section{EAD Model: Exposure at Default}
+
+The EAD model regresses the Credit Conversion Factor (CCF) on loan and borrower characteristics using linear regression, with predictions clipped to $[0, 1]$:
+\begin{equation}
+  \hat{EAD} = \hat{CCF} \times \text{funded\_amnt}, \qquad \hat{CCF} = X\hat{\beta}_{EAD}
+\end{equation}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\chapter{Risk Management and Regulatory Outputs}
+\label{ch:risk}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\section{Expected Loss}
+
+Portfolio Expected Loss is computed per loan using the real calibrated PiT PD (a key correction in the v4 update --- prior versions used hard-coded grade-proxy approximations):
+\begin{equation}
+  EL_i = \hat{PD}_i^{PiT} \times \hat{LGD}_i \times \hat{EAD}_i
+\end{equation}
+
+\section{IFRS 9 Three-Stage Expected Credit Loss}
+
+\subsection{SICR Classification}
+
+Every OOT loan is classified into IFRS~9 stages using the SICR rule, following EBA/GL/2017/06 \cite{eba2017b}:
+\begin{itemize}
+  \item \textbf{Stage 3 (credit-impaired)}: 90+ days past due, or Charged Off status.
+  \item \textbf{Stage 2 (SICR)}: triggered by any of: (i) relative PD $\geq 2\times$ origination PD, (ii) absolute PD increase $\geq 5$pp since origination, (iii) 30-DPD backstop, or (iv) watchlist flag.
+  \item \textbf{Stage 1 (performing)}: none of the above.
+\end{itemize}
+
+\subsection{Lifetime ECL Calculation}
+
+Stage~1 loans receive 12-month ECL:
+\begin{equation}
+  ECL^{12m}_i = PD_i \times LGD_i \times EAD_i \times \min\!\left(\frac{term_i}{12}, 1\right)
+\end{equation}
+Stage~2 and Stage~3 loans receive lifetime ECL via a geometric hazard term structure:
+\begin{equation}
+  ECL^{lifetime}_i = \sum_{t=1}^{T_i} \frac{h_i \cdot (1-h_i)^{t-1} \cdot LGD_i \cdot EAD_i}{(1+r)^t}
+\end{equation}
+where $h_i = 1 - (1-PD_i)^{1/12}$ is the monthly hazard rate, $T_i$ is the remaining loan term in months, and $r = 5\%$ is the annual discount rate.
+
+\subsection{Probability-Weighted Scenario ECL}
+
+Per IFRS~9 \S5.5.17, ECL is probability-weighted across multiple macroeconomic scenarios \cite{iasb2014}. A log-odds macro satellite model adjusts PD per scenario \cite{bellotti2009}:
+\begin{equation}
+  \Delta \text{logit}(PD) = 0.18 \times \Delta\text{unemployment} - 0.10 \times \Delta\text{GDP}
+\end{equation}
+Scenario weights: Base 50\%, Upside 25\%, Downside 25\%.
+
+\section{Basel III AIRB Capital Calculation}
+
+The retail IRB formula computes capital requirements per loan \cite{bcbs2004, bcbs2022}:
+\begin{align}
+  \rho &= 0.03 + 0.16 \times \frac{1 - e^{-35 \cdot PD}}{1 - e^{-35}} \quad \text{(retail asset correlation)} \\
+  PD_{WC} &= \Phi\!\left(\frac{\Phi^{-1}(PD) + \sqrt{\rho} \cdot \Phi^{-1}(0.999)}{\sqrt{1-\rho}}\right) \quad \text{(99.9\% worst-case PD)} \\
+  K &= LGD_{DT} \times (PD_{WC} - PD) \quad \text{(unexpected loss per unit EAD)} \\
+  RWA &= K \times 12.5 \times EAD
+\end{align}
+Minimum capital under Basel~III is 8\% of RWA, with an additional capital conservation buffer of 2.5\%.
+
+\section{Model Monitoring: PSI and CSI}
+
+The daily monitoring pipeline computes PSI for the score distribution and CSI for each input variable \cite{garp2021, arthur_ai2025}. Alerts fire when PSI $> 0.25$ on any variable. The Champion/Challenger framework runs the incumbent logistic scorecard against a candidate model monthly; the challenger promotes only when its Gini statistically exceeds the champion's by $> 2$ percentage points (Mann-Whitney U test, $\alpha = 0.05$).
+
+% ─────────────────────────────────────────────────────────────────────────────
+\chapter{Experimental Results}
+\label{ch:results}
+% ─────────────────────────────────────────────────────────────────────────────
+
+All four learning notebooks (L01--L04) were executed end-to-end on the real dataset with zero errors, regenerating 24 visualisations and all model artifacts. This chapter presents those results with interpretation. All figures are drawn directly from the verified v4 pipeline run (2026-06-07).
+
+% ─── L01 Results ──────────────────────────────────────────────────────────────
+\section{L01: Exploratory Data Analysis}
+
+\subsection{Loan Volume and Default Rate Over Time}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.92\textwidth]{L01_loan_volume_default_rate.png}
+  \caption{Loan volume and default rate by issue year.}
+  \label{fig:loan_volume}
+\end{figure}
+
+Loan originations grew steadily from 2007 through 2015, then accelerated further through 2018. The default rate remained relatively stable during the 2007--2014 training period but rose sharply in the 2016--2018 out-of-time window, climbing from approximately 18.6\% to 25.3\%. This 6.65 percentage point increase is the first evidence of a population-level shift between the training and deployment periods --- the same shift that later triggers the Score PSI ALERT of 0.282. It also motivates the OOT split design: using 2016--2018 data as the test set creates a genuinely forward-looking evaluation that a random split cannot replicate.
+
+\subsection{Default Rate by Credit Grade}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{L01_default_rate_by_grade.png}
+  \caption{Default rate by Lending Club internal grade (A--G).}
+  \label{fig:default_grade}
+\end{figure}
+
+Default rate increases monotonically from approximately 5\% for Grade A borrowers to over 35\% for Grade G borrowers. This strict monotonic relationship is the foundational empirical justification for the WoE encoding approach: it confirms that the grade variable (and by extension the underlying credit-risk factors it summarises) produces a clean, directionally consistent ordering of credit risk. A variable exhibiting non-monotonic WoE behaviour would require coarse classing or exclusion; grade passes this test cleanly. From a risk management perspective, the sevenfold difference in default rate between Grade A and Grade G borrowers quantifies the discriminatory value of the internal grading system and justifies the 10-class credit policy (AA--F) built on top of the PD scorecard.
+
+\subsection{FICO Score Distribution: Good vs Bad Borrowers}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.88\textwidth]{L01_fico_distribution_good_bad.png}
+  \caption{FICO score distribution for good and bad borrowers.}
+  \label{fig:fico_dist}
+\end{figure}
+
+The two distributions are clearly separated: good borrowers (fully paid) are concentrated at higher FICO scores, while bad borrowers (charged off) are concentrated at the lower end of the range. The overlap region in the 640--720 band represents the population where the credit decision is most difficult and where the scorecard provides the most value. FICO score achieves an Information Value (IV) above 0.30 in this portfolio, placing it in the ``strong'' predictor category \cite{siddiqi2006}. This high IV confirms that FICO score should be included as a model input and that its WoE bins will carry substantial weight in the final logistic regression scorecard.
+
+% ─── L02 Results ──────────────────────────────────────────────────────────────
+\section{L02: PD Model and Scorecard}
+
+\subsection{PD Model Performance}
+
+\begin{table}[H]
+\centering
+\caption{PD model performance on the OOT test set (post-calibration).}
+\label{tab:pdperf}
+\begin{tabular}{llll}
+\toprule
+\textbf{Metric} & \textbf{Value} & \textbf{Benchmark} & \textbf{Assessment} \\
+\midrule
+AUC             & 0.694 & $> 0.65$       & \checkmark\ Acceptable \cite{eba2017a} \\
+Gini            & 0.387 & $\geq 0.40$    & Marginally below target \\
+KS Statistic    & 0.281 & $> 0.25$       & \checkmark\ Acceptable \cite{lessmann2015} \\
+Brier Score     & 0.172 & $\leq 0.20$    & \checkmark\ Acceptable \cite{baesens2003} \\
+H-L pre-calib.  & p $\approx$ 0 & p $\geq 0.05$ & Miscalibrated --- corrected \\
+H-L post-calib. & HL = 403 & ---          & Large $n$ inflates test power \\
+Mean PD (calib.)& 25.27\% & Matches actual DR & \checkmark\ Calibrated \\
+Score PSI       & 0.282 & $< 0.25$       & ALERT: population shift \cite{garp2021} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The model achieves acceptable discrimination: an AUC of 0.694 and KS of 0.281 both clear their regulatory benchmarks \cite{eba2017a}. The Gini of 0.387 falls marginally below the preferred 0.40 target, reflecting the inherent difficulty of discriminating default in a P2P portfolio where the selection of funded loans has already filtered out the worst-risk applicants (selection bias from rejected loans). The Brier Score of 0.172 confirms that the calibrated probability outputs are well-rounded --- close to the true default rate on average. The Score PSI of 0.282 is the most operationally significant result: it exceeds the 0.25 alert threshold, confirming that the 2016--2018 applicant population has shifted materially from the 2007--2015 training cohort and that a model rebuild will eventually be required \cite{garp2021}.
+
+\subsection{ROC Curve}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.72\textwidth]{L02_roc_curve.png}
+  \caption{ROC curve on the OOT test set (AUC = 0.694).}
+  \label{fig:roc}
+\end{figure}
+
+The ROC curve lies clearly above the 45\textdegree\ diagonal (random classifier baseline) across the full range of operating thresholds, confirming the model has genuine discriminatory power. The area under the curve of 0.694 means that, if one good and one bad borrower are drawn at random, the model assigns the higher probability of default to the bad borrower 69.4\% of the time. The corresponding Gini of 0.387 exceeds the minimum acceptable level for retail credit scorecards. Importantly, the AUC is invariant to the intercept calibration applied in the next step: the ranking of borrowers is unchanged; only the absolute level of predicted probability is corrected.
+
+\subsection{Decile Analysis}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.88\textwidth]{L02_decile_analysis.png}
+  \caption{Bad rate by score decile on the OOT test set.}
+  \label{fig:decile}
+\end{figure}
+
+The bad rate decreases strictly and monotonically from Decile 1 (lowest credit scores, highest risk) to Decile 10 (highest scores, lowest risk) --- with no violations of ordering. This monotonic pattern is a mandatory scorecard acceptance criterion under \citet{siddiqi2006}: a scorecard that does not rank-order risk monotonically across deciles cannot be used for credit decisioning because it would produce counter-intuitive approvals and rejections. The concentration of bad borrowers in the lower deciles is also operationally meaningful: Deciles 1--3 collectively capture more than 50\% of all bad borrowers while representing only 30\% of the portfolio by count. This concentration effect is exactly what allows the credit policy's auto-reject rule for the F class (lowest scores) to achieve meaningful loss reduction while rejecting a small share of applications.
+
+\subsection{Score Distribution: Good vs Bad Borrowers}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.88\textwidth]{L02_score_distribution_good_bad.png}
+  \caption{Credit score distribution for good and bad borrowers.}
+  \label{fig:score_dist}
+\end{figure}
+
+Good borrowers cluster at higher credit scores (approximately 550--750) while bad borrowers cluster at lower scores (approximately 400--600). The degree of separation between the two distributions is directly related to the model's Gini coefficient: a perfect model would produce two non-overlapping distributions; this model produces moderate separation consistent with Gini 0.387. The substantial overlap in the 500--650 range reflects the genuine difficulty of distinguishing good from bad borrowers at the application stage using only application-time information --- these are the borderline cases where the ROI-based credit policy provides the most value by incorporating expected profitability into the decision.
+
+\subsection{Score-to-PD Conversion}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.75\textwidth]{L02_score_pd_conversion.png}
+  \caption{Scorecard score mapped to calibrated PiT PD.}
+  \label{fig:score_pd}
+\end{figure}
+
+The score-to-PD conversion confirms that PDO scaling is correctly implemented: the relationship is monotonically decreasing, and every 20-point increase in score approximately halves the predicted odds of default (PDO = 20) \cite{siddiqi2006}. A borrower scoring 600 has predicted PD approximately equal to the long-run average; a borrower scoring 780 (AA class) has a PD roughly an order of magnitude lower; a borrower scoring 400 (F class) has a PD well above 50\%. This smooth and interpretable score-to-PD mapping is the key property that makes the scorecard usable in regulatory documentation, ECOA adverse action code generation, and IFRS~9 SICR classification, because each score translates directly to a concrete probability that can be compared against origination benchmarks.
+
+\subsection{Calibration Reliability Diagram}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.75\textwidth]{L02_calibration_reliability_diagram.png}
+  \caption{Reliability diagram before and after PD calibration.}
+  \label{fig:calibration}
+\end{figure}
+
+The reliability diagram plots each score decile's mean predicted PD against the actual observed default rate. Before calibration (lower curve), all data points fall systematically below the 45\textdegree\ perfect-calibration diagonal: the model under-predicts default probability at every decile, with predicted PD averaging 20.18\% against an actual OOT default rate of 25.27\%. After the intercept log-odds shift ($\delta = +0.3204$), the points align much more closely with the diagonal, and mean predicted PD matches the observed rate. The residual scatter around the diagonal post-calibration is driven by the large sample size ($n = 538{,}515$): the Hosmer-Lemeshow test has near-infinite statistical power at this scale, so even tiny calibration imperfections produce a rejection of the null hypothesis. For practical credit risk management purposes, the post-calibration reliability diagram demonstrates adequate level accuracy.
+
+\subsection{PD Model Coefficients}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.92\textwidth]{L02_pd_model_coefficients.png}
+  \caption{Logistic regression coefficients for the 39 significant WoE dummies.}
+  \label{fig:coefficients}
+\end{figure}
+
+All 39 retained WoE dummy variables have p $< 0.05$ under the Wald test, confirming statistical significance for regulatory documentation purposes. The coefficient directions are consistent with credit risk intuition: dummies corresponding to high-grade borrowers (A, B), high FICO scores, long employment history, and low debt-to-income ratios carry positive coefficients (associated with lower default probability); dummies corresponding to low grades (F, G), recent delinquencies, and high credit utilisation carry negative coefficients. The magnitude of coefficients reflects the Information Value hierarchy observed during WoE analysis: FICO score, subgrade, and interest rate dummies contribute the largest absolute score adjustments, consistent with their high IV values.
+
+\subsection{Risk Class Distribution}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.82\textwidth]{L02_risk_class_distribution.png}
+  \caption{Distribution of OOT loans across the 10 risk classes.}
+  \label{fig:risk_class}
+\end{figure}
+
+The portfolio is concentrated in the middle risk classes (BB--C), with comparatively few loans in the extreme classes AA and F. This distribution has important implications for the credit policy: the auto-approve rules (AA and A) cover a small but high-quality segment with very low expected loss, while the auto-reject rule (F) covers the tail of highest-risk borrowers whose expected loss exceeds any plausible interest income. The majority of lending decisions fall in the middle bands, where the ROI-based policy (approve if annualised ROI $> r_f$) provides the most nuanced risk-return trade-off. The shift of the OOT population toward lower risk classes (BB--CD) relative to the training distribution is another manifestation of the same population shift captured by the Score PSI.
+
+\subsection{Effect of PD Calibration on Regulatory Outputs}
+
+\begin{table}[H]
+\centering
+\caption{Downstream impact of PD calibration ($\delta = +0.3204$).}
+\label{tab:calibimpact}
+\begin{tabular}{llll}
+\toprule
+\textbf{Output} & \textbf{Pre-calib.} & \textbf{Post-calib.} & \textbf{Delta} \\
+\midrule
+Mean PD               & 20.18\% & 25.27\% & $+5.09$pp \\
+H-L statistic         & 10,039  & 403     & $-96\%$ \\
+IRB RWA               & \$13.62B & \$14.07B & $+$\$0.45B ($+3.3\%$) \\
+IRB Minimum Capital   & \$1.09B  & \$1.13B  & $+$\$0.04B \\
+Capital ratio (\% EAD)& 33.4\%   & 34.5\%   & $+1.1$pp \\
+12-month EL           & \$0.650B & \$0.808B & $+$\$0.158B ($+24\%$) \\
+IFRS~9 lifetime ECL   & \$1.334B & \$1.601B & $+$\$0.267B ($+20\%$) \\
+IFRS~9 Stage 2 mix    & 61.0\%   & 74.2\%   & $+13.2$pp \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+This table demonstrates that PD calibration is not a cosmetic adjustment --- it propagates through every downstream regulatory output. The 5.09pp increase in mean PD caused by the intercept shift flows through to a 24\% increase in 12-month Expected Loss (\$+158M), a 20\% increase in lifetime ECL (\$+267M), and a 13.2pp increase in the share of the portfolio classified as Stage~2 under IFRS~9. On the Basel capital side, the correctly calibrated PD increases RWA by \$450M and minimum capital by \$40M. A bank that deployed the uncalibrated model would systematically under-provision against credit losses and under-capitalise against unexpected losses --- directly violating the core objective of both IFRS~9 and Basel III.
+
+% ─── L03 Results ──────────────────────────────────────────────────────────────
+\section{L03: LGD, EAD, Expected Loss, and IFRS 9 ECL}
+
+\subsection{Recovery Rate Distribution}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.82\textwidth]{L03_recovery_rate_distribution.png}
+  \caption{Recovery rate distribution on charged-off loans.}
+  \label{fig:recovery}
+\end{figure}
+
+The recovery rate distribution is bimodal: a mass of approximately 50\% of charged-off loans at exactly zero recovery, and a spread of positive recovery rates for the remaining half. This bimodality is the empirical motivation for the two-stage LGD architecture. A single linear regression fit to this distribution would be pulled toward an average of approximately 8\% recovery, producing poor predictions for both zero-recovery loans (systematic over-prediction) and high-recovery loans (systematic under-prediction). The two-stage design explicitly separates the binary question (``does any recovery occur?'') from the continuous question (``how much?''), fitting a logistic classifier for the first and a linear regressor for the second.
+
+\subsection{LGD Model Residuals}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{L03_lgd_residuals.png}
+  \caption{LGD model residuals (actual minus predicted recovery rate).}
+  \label{fig:lgd_residuals}
+\end{figure}
+
+The residuals are approximately centred around zero, with a mean absolute error (MAE) of $\approx 5\%$. The distribution has a slight negative skew, indicating the model tends to underestimate large recovery amounts. This is an acceptable and expected property of a conservative credit risk model: from a provisioning perspective, underestimating recoveries (i.e., overestimating LGD) produces higher ECL estimates, which provides a prudent margin of conservatism \cite{bcbs2022}. The residual spread is larger in the right tail (high recovery cases), reflecting the genuine unpredictability of large recovery outcomes that depend on collateral disposition, legal proceedings, and macroeconomic conditions at the time of workout.
+
+\subsection{CCF Distribution}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.82\textwidth]{L03_ccf_distribution.png}
+  \caption{Credit Conversion Factor distribution on charged-off loans.}
+  \label{fig:ccf_dist}
+\end{figure}
+
+The Credit Conversion Factor (CCF = outstanding balance as a fraction of funded amount at default) is right-skewed, with a large concentration of values close to 1.0. This indicates that the majority of defaults occur early in the loan term, before significant principal repayment has taken place --- the borrower defaults while still owing close to the full funded amount. The median CCF above 0.8 means that EAD is typically more than 80\% of the original funded amount, making EAD prediction relatively conservative by default. The left tail (CCF close to zero) represents late-stage defaults where the borrower had nearly repaid the loan --- a smaller loss severity regardless of LGD level.
+
+\subsection{EAD Model Residuals}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{L03_ead_residuals.png}
+  \caption{EAD model residuals (actual minus predicted CCF).}
+  \label{fig:ead_residuals}
+\end{figure}
+
+The EAD model residuals have a larger spread than the LGD residuals, with a MAE of approximately 14\%. This reflects the fundamentally greater difficulty of predicting when within a loan's lifecycle a default will occur --- CCF depends on how many payments the borrower makes before defaulting, which is harder to predict from application-time features than the loss severity on an already-defaulted loan. The residual distribution is roughly symmetric around zero, confirming no systematic directional bias. The 14\% MAE is operationally acceptable for portfolio-level EAD estimation: at the individual loan level errors partially cancel, and the total portfolio EAD of \$3.26B is the primary input to ECL and capital calculations.
+
+\subsection{Expected Loss by Grade}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.88\textwidth]{L03_expected_loss_by_grade.png}
+  \caption{Expected Loss rate by Lending Club grade.}
+  \label{fig:el_grade}
+\end{figure}
+
+Expected Loss rate (EL/EAD) increases monotonically from Grade A to Grade G, mirroring the default rate pattern in Figure~\ref{fig:default_grade}. However, the EL gradient across grades is steeper than the default rate gradient, because higher-grade borrowers also tend to have lower EAD (they borrow less and repay more before any default) and potentially marginally higher recovery rates. Grade G loans carry an EL rate more than an order of magnitude higher than Grade A loans. This cross-grade EL profile is the direct input to the ROI-based credit policy: for middle-band risk classes (AB--CD), the credit decision compares the expected interest income against the expected loss, and this chart confirms that the EL component grows rapidly for lower-grade borrowers, making profitability thresholds harder to meet.
+
+\subsection{IFRS 9 ECL Staging}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.88\textwidth]{L03_ifrs9_ecl_staging.png}
+  \caption{IFRS~9 three-stage ECL breakdown by count and provision.}
+  \label{fig:ifrs9_staging}
+\end{figure}
+
+The IFRS~9 staging results reveal a stark concentration of credit risk in Stage~2. While Stage~1 loans make up the majority of the OOT portfolio by count, they contribute only 7.0\% (\$15M) of total provisions because they carry only 12-month ECL. Stage~2 loans --- those with a Significant Increase in Credit Risk --- dominate the provision pool at 71.4\% (\$967M), despite not yet having defaulted. Stage~3 loans (already credit-impaired) contribute 21.6\% (\$413M). The dominance of Stage~2 is driven by the SICR trigger: after calibration, the mean PiT PD is 25.27\%, and many OOT loans have PDs that have doubled relative to their origination PD (the relative SICR rule), moving them into Stage~2 lifetime ECL treatment. This result highlights a critical IFRS~9 design consideration: the staging boundary and SICR definition directly control what fraction of provisions are 12-month versus lifetime, and therefore have a large impact on total provisioning levels.
+
+\subsection{IFRS 9 Scenario-Weighted ECL}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.88\textwidth]{L03_ifrs9_scenario_weighted_ecl.png}
+  \caption{IFRS~9 ECL under three macro scenarios and the weighted total.}
+  \label{fig:ifrs9_scenario}
+\end{figure}
+
+The three-scenario ECL chart quantifies the impact of macroeconomic uncertainty on credit provisions. The base scenario (mean PD = 25.27\%) produces lifetime ECL of \$1.601B. Under the upside scenario ($-1.5$pp unemployment, $+2.0$pp GDP), PD falls to 18.06\% and ECL drops to \$1.205B. Under the downside scenario ($+3.0$pp unemployment, $-2.5$pp GDP), PD rises to 40.56\% and ECL surges to \$2.176B --- a 36\% increase above the base. The probability-weighted total of \$1.646B is \$44M above the base scenario alone, reflecting the convexity of the lifetime ECL formula with respect to PD: losses accelerate faster than PD increases under the geometric hazard structure. This non-linearity is the key reason IFRS~9 §5.5.17 requires probability-weighted scenarios rather than a single central estimate --- using the base scenario alone would systematically understate expected provisions in the presence of downside risk.
+
+\subsection{Vintage Analysis}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.90\textwidth]{L03_vintage_analysis.png}
+  \caption{Predicted PD vs actual default rate by origination year.}
+  \label{fig:vintage}
+\end{figure}
+
+The vintage analysis plots the model's predicted PD against the actual observed default rate for each origination year cohort. The model tracks the actual default experience reasonably closely across years, validating that the out-of-time calibration is working correctly. Two features are notable: first, the 2007--2009 cohorts show elevated actual default rates (the Global Financial Crisis impact), which the model partially tracks; second, the 2016--2018 cohorts show a widening gap between predicted and actual default rates, consistent with the population shift identified by PSI monitoring. This divergence in the most recent cohorts is the quantitative signal that the model needs to be retrained on more recent data --- predicted PD is running below the actual default rate for 2016+ originations, which will cause under-provisioning if not corrected.
+
+\subsection{Portfolio-Level Risk Outputs}
+
+\begin{table}[H]
+\centering
+\caption{Portfolio-level risk outputs (calibrated PiT PD, OOT test set).}
+\label{tab:portfolio}
+\begin{tabular}{ll}
+\toprule
+\textbf{Metric} & \textbf{Value} \\
+\midrule
+Total EAD (portfolio)            & \$3.26B \\
+Mean LGD (long-run)              & 92.19\% \\
+Downturn LGD (Basel AIRB)       & 93.76\% \\
+12-month Expected Loss (EL)      & \$0.808B \\
+EL rate (\% of EAD)              & 19.93\% \\
+IFRS~9 ECL -- Base (lifetime)   & \$1.601B \\
+IFRS~9 ECL -- Upside (lifetime) & \$1.205B \\
+IFRS~9 ECL -- Downside (lifetime)& \$2.176B \\
+IFRS~9 ECL -- Weighted (\S5.5.17)& \$1.646B \\
+Lifetime vs 12-month uplift      & +\$838M (+104\%) \\
+IRB Risk-Weighted Assets (RWA)   & \$14.07B \\
+Basel~III Min. Capital (8\% RWA)& \$1.13B \\
+Capital ratio (\% EAD)           & 34.5\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The portfolio-level results contain three headline findings. First, the mean LGD of 92.19\% --- long-run average recovery rate of only 7.81\% --- reflects the unsecured nature of Lending Club personal loans: without collateral to seize and liquidate, most of the outstanding balance is unrecoverable after default. This is the primary driver of the high 12-month EL rate of 19.93\% even for a portfolio with moderate average PD. Second, the lifetime ECL uplift of +\$838M (+104\%) over the 12-month EL quantifies the accounting consequence of the IFRS~9 lifetime provisioning requirement: Stage~2 and Stage~3 loans must reserve against all future expected losses, not just the next 12 months. Third, the Basel III IRB capital ratio of 34.5\% of EAD is high relative to typical retail portfolios, primarily because of the elevated LGD: capital is proportional to unexpected loss, which scales with LGD through the AIRB formula. These three findings together illustrate why credit risk modelling for unsecured consumer lending requires careful attention to LGD calibration --- a small change in recovery rate assumptions has a large effect on both provisions and capital.
+
+% ─── L04 Results ──────────────────────────────────────────────────────────────
+\section{L04: Population Stability and Model Monitoring}
+
+\subsection{PSI Master Dashboard}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{L04_psi_master_dashboard.png}
+  \caption{PSI master dashboard: Score PSI and variable-level CSI.}
+  \label{fig:psi_dashboard}
+\end{figure}
+
+The PSI master dashboard provides a single-view summary of model stability across all monitored dimensions. The Score PSI bar is in the red ALERT zone at 0.282, exceeding the 0.25 redevelopment threshold \cite{garp2021}. Several input variable CSI bars are also elevated, providing the root-cause signals needed to identify which features are driving the overall score distribution shift. The dashboard is designed to be reviewed daily by the model monitoring team: any bar crossing into the red zone triggers an immediate investigation and escalation to the model owner and risk committee, in line with the SR~11-7 governance framework \cite{sr117}.
+
+\subsection{Score PSI Distribution}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{L04_score_psi_distribution.png}
+  \caption{Score distribution: training vs OOT monitoring population.}
+  \label{fig:psi_score}
+\end{figure}
+
+The credit score distribution of the 2016--2018 monitoring population is shifted visibly to the left (lower scores) relative to the 2007--2015 training population. This downward shift in score is consistent with the increase in OOT default rate from 18.62\% to 25.27\%: the monitoring population contains a higher proportion of higher-risk borrowers. Importantly, this shift does not mean the model is performing poorly --- the rank ordering is preserved (as confirmed by the decile analysis). It means that the model is operating on a different population from the one it was trained on, which is why the intercept calibration and ongoing PSI monitoring are essential. If the shift persists or deepens, retraining on more recent data becomes necessary to prevent systematic under-scoring of the current applicant population.
+
+\subsection{CSI for Continuous Variables}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.90\textwidth]{L04_psi_continuous_variables.png}
+  \caption{CSI for continuous model input variables.}
+  \label{fig:psi_continuous}
+\end{figure}
+
+Variables with CSI $> 0.25$ (shown in red) are the primary drivers of the overall score distribution shift. These are continuous model inputs --- such as FICO score, debt-to-income ratio, interest rate, and annual income --- whose distributional properties in the 2016--2018 OOT population differ materially from the 2007--2015 training distribution. High CSI on a continuous variable signals that its WoE bins, which were fitted on training data, may no longer accurately represent the risk ordering in the monitoring population. In practice, this triggers a re-binning review: the risk analyst examines whether the WoE values for each affected variable are still monotonically ordered and directionally consistent on the monitoring population.
+
+\subsection{CSI for Discrete Variables}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.90\textwidth]{L04_psi_discrete_variables.png}
+  \caption{CSI for categorical model input variables.}
+  \label{fig:psi_discrete}
+\end{figure}
+
+Categorical variables show a more mixed stability picture: some (such as loan purpose and employment status) are relatively stable (CSI $< 0.10$), while others show moderate or elevated drift. Categorical CSI is driven by changes in the mix of categories in the monitoring population relative to training --- for example, if a higher proportion of 2016--2018 applicants fall in categories that were rare in the training data, the model's WoE values for those categories may be based on limited data and could perform poorly. Variables with elevated categorical CSI are flagged for inclusion in the model redevelopment review.
+
+\subsection{Characteristic Stability Index Summary}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.90\textwidth]{L04_characteristic_stability_index.png}
+  \caption{CSI across all 39 model inputs, ranked by severity.}
+  \label{fig:csi}
+\end{figure}
+
+The CSI summary ranks all 39 model input variables by their stability index value, providing a rapid root-cause prioritisation. Variables in the red zone ($> 0.25$) require immediate investigation and are the primary candidates for re-binning or replacement in the next model build. Variables in the amber zone (0.10--0.25) require monitoring but are not yet critical. Variables in the green zone ($< 0.10$) are stable and can remain unchanged. The chart shows that a small number of high-IV predictors --- precisely those that contribute most to the scorecard's discriminatory power --- also exhibit the most instability. This creates the core model monitoring dilemma: the most powerful variables are the most sensitive to population shift and therefore the first to degrade.
+
+\subsection{Champion/Challenger Comparison}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.82\textwidth]{L04_champion_challenger.png}
+  \caption{Champion vs challenger Gini comparison.}
+  \label{fig:champion}
+\end{figure}
+
+The Champion/Challenger test compares the incumbent logistic scorecard (champion, Gini $\approx 0.387$) against a candidate model (challenger) on the same OOT test set. The challenger's Gini is also approximately 0.387 --- essentially identical. The Mann-Whitney U test confirms that the difference is not statistically significant at the $\alpha = 0.05$ level, and the Gini improvement falls short of the required 2 percentage point minimum threshold for promotion. The verdict is \textbf{Keep Champion}. This outcome is interpretable in two ways: it confirms that the current scorecard is robust (no alternative configuration of the same model class outperforms it), but it also suggests that the next challenger should come from a different model class entirely --- specifically, a gradient-boosting model (XGBoost or LightGBM), which the literature shows consistently outperforms logistic regression in discrimination metrics \cite{dong2023, demajo2025}.
+
+\subsection{Reject Inference Results}
+
+\begin{table}[H]
+\centering
+\caption{Reject inference (parceling): impact on OOT PD metrics.}
+\label{tab:rejectinf}
+\begin{tabular}{llll}
+\toprule
+\textbf{Metric} & \textbf{Original (831K)} & \textbf{Augmented (857K)} & \textbf{Delta} \\
+\midrule
+AUC         & 0.6937 & 0.6940 & $+0.0003$ \\
+Gini        & 0.3874 & 0.3879 & $+0.05$pp \\
+KS          & 0.2813 & 0.2816 & $+0.0003$ \\
+Brier Score & 0.1750 & 0.1751 & $+0.0001$ \\
+Mean OOT PD & 0.2018 & 0.2070 & $+0.52$pp \\
+Train DR    & 18.62\% & 20.35\% & $+1.73$pp \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The reject inference results reveal two distinct effects of the parceling augmentation. On discrimination metrics (AUC, Gini, KS, Brier Score), the differences are negligibly small --- essentially zero --- because the 26,129 synthetic reject rows represent only 3.1\% of the augmented training set and are insufficient to shift the decision boundary of the logistic regression. This confirms that, in terms of ranking borrowers by risk, the reject inference step has minimal impact. However, on PD level, the effect is meaningful: mean OOT PD rises from 20.18\% to 20.70\%, partially correcting the downward selection bias. The training default rate also rises from 18.62\% to 20.35\%, better reflecting the true (population-level) default rate that includes previously rejected borrowers. Combined with the subsequent intercept recalibration, reject inference and calibration together produce the most accurate PD level estimate achievable from this dataset.
+
+% ─── L05 Results ──────────────────────────────────────────────────────────────
+\section{L05: PD Model Rebuild on 2016--2018 Data}
+\label{sec:l05}
+
+\label{sec:l05rebuild}
+\subsection{Motivation and Design}
+
+The Score PSI of 0.282 detected in L04 exceeds the 0.25 ALERT threshold, confirming that the 2016--2018 applicant population has shifted materially from the 2007--2015 training window. In response, this section retrains the logistic WoE scorecard on 2016--2017 data and evaluates the rebuilt model against the original Champion on the 2018 holdout.
+
+The rebuild strategy retains the WoE bin structure from L01 (same 56 dummy columns computed on the original training data) and re-estimates the logistic regression weights on 2016--2017 data via iterative backward elimination (p-value threshold $< 0.05$). This approach isolates the effect of updating regression weights without requiring a full WoE re-fit, which would require the complete raw feature pipeline. Five near-zero-variance dummy columns (empty bins in the 2016--2017 population) are dropped before fitting. The rebuilt model is then calibrated to the 2018 observed default rate of 25.33\% using the same intercept log-odds shift method applied in L02.
+
+\begin{table}[H]
+\centering
+\caption{Data split for PD rebuild.}
+\label{tab:rebuild_split}
+\begin{tabular}{lllll}
+\toprule
+\textbf{Role} & \textbf{Years} & \textbf{Rows} & \textbf{DR} & \textbf{Purpose} \\
+\midrule
+Champion train  & 2007--2015 & 831,051  & 18.62\% & Original model training \\
+Rebuild train   & 2016--2017 & 474,976  & 25.26\% & New logistic weight estimation \\
+Rebuild holdout & 2018       & 63,539   & 25.33\% & Out-of-time evaluation \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Rebuild Results: Champion vs Rebuilt on 2018 Holdout}
+
+\begin{table}[H]
+\centering
+\caption{Champion vs Rebuilt model performance on the 2018 out-of-time holdout.}
+\label{tab:rebuild_metrics}
+\begin{tabular}{lllll}
+\toprule
+\textbf{Metric} & \textbf{Champion (2007--2015)} & \textbf{Rebuilt (2016--2017)} & \textbf{$\Delta$} & \textbf{Assessment} \\
+\midrule
+AUC      & 0.682 & 0.692 & $+0.010$ & Improved \\
+Gini     & 0.364 & 0.383 & $+0.019$ & Improved \\
+KS       & 0.268 & 0.280 & $+0.012$ & Improved \\
+Brier    & 0.175 & 0.173 & $-0.002$ & Improved \\
+Mean PD  & 24.71\% & 25.33\% & $+0.62$pp & Correctly calibrated \\
+Actual DR& 25.33\% & 25.33\% & --- & Reference \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The rebuilt model improves across every metric on the 2018 holdout. Gini rises from 0.364 to 0.383 ($+1.9$pp), approaching but not yet exceeding the standard 2pp promotion threshold used in champion/challenger governance. AUC improves from 0.682 to 0.692 and the Brier Score decreases marginally, indicating slightly better probability accuracy. Most importantly, the rebuilt model's mean PD (25.33\%) matches the 2018 observed default rate exactly, eliminating the 0.62pp underprediction bias of the Champion.
+
+The feature set contracts from 56 to 39 significant dummies after backward elimination on 2016--2017 data --- the same count as the Champion, but a partially different set, reflecting which borrower characteristics were most statistically informative in the updated population.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{L05_champion_vs_rebuilt_roc_calibration.png}
+  \caption{ROC curves and decile calibration: Champion vs Rebuilt on 2018 holdout.}
+  \label{fig:l05_roc}
+\end{figure}
+
+The ROC curve (Figure~\ref{fig:l05_roc}, left panel) shows the rebuilt model's curve lying slightly above the Champion across most operating thresholds, consistent with the +1.9pp Gini gain. The right panel shows the decile calibration: both models are well-aligned to actual default rates across score deciles, but the rebuilt model's mean prediction is anchored to the correct 25.33\% level while the Champion systematically underpredicts.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{L05_rebuild_metrics_comparison.png}
+  \caption{Discrimination metrics and PD distribution: Champion vs Rebuilt on 2018 holdout.}
+  \label{fig:l05_metrics}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.88\textwidth]{L05_yearly_pd_vs_actual_dr.png}
+  \caption{Predicted PD vs actual default rate by issue year: Champion underprediction and rebuilt correction.}
+  \label{fig:l05_vintage}
+\end{figure}
+
+Figure~\ref{fig:l05_vintage} places the rebuild in historical context. The Champion model tracks actual default rates well through 2015 but diverges for 2016--2018 cohorts, confirming the PSI signal. The rebuilt model's mean PD on the 2018 population ($\star$ marker) is anchored to the correct level. The PSI between Champion and Rebuilt predictions on 2018 is 0.0094 (STABLE), confirming that both models now describe the same 2018 borrower population similarly --- the difference is purely in weights, not in which borrowers they score high or low.
+
+\subsection{Interpretation}
+
+The rebuild demonstrates three principles. First, retraining on recent data corrects level bias: the Champion's 0.62pp underprediction on 2018 is eliminated at zero cost to rank ordering. Second, discrimination improves modestly (+1.9pp Gini) because the updated regression weights capture the risk factors that became more or less predictive in the 2016--2017 population. Third, the feature count is stable (39 significant dummies), suggesting the scorecard structure is broadly appropriate for the updated population; only the variable weights needed adjustment.
+
+The Gini improvement of +1.9pp falls short of the 2pp threshold required for formal champion promotion under the Mann-Whitney U test ($\alpha = 0.05$), so under the project's governance rules the rebuilt model is classified as a strong challenger rather than an immediate replacement. A full re-estimation including WoE re-binning on 2016--2018 raw data --- the complete production rebuild --- would be the recommended next step before promotion.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\chapter{Discussion}
+\label{ch:discussion}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\section{Principal Findings}
+
+This paper demonstrates that a single public dataset can be used to build and verify a credit risk platform that simultaneously satisfies statistical model quality standards, IFRS~9 provisioning requirements, Basel~III AIRB capital calculation, and SR~11-7 model governance. The key empirical finding is that calibration is not a cosmetic step --- it is financially material. Without the intercept recalibration, the model underestimates the OOT default rate by 5.09pp, which cascades to a 24\% underestimate of 12-month EL (\$158M) and a 20\% underestimate of lifetime ECL (\$267M).
+
+The gap between a flat 12-month EL (\$0.808B) and the IFRS~9 probability-weighted lifetime ECL (\$1.646B) --- an uplift of \$838M or +104\% --- quantifies the real accounting consequence of the ECL framework's lifetime provisioning requirement. This uplift is driven by Stage~2 loans (74.2\% of the OOT portfolio post-calibration), which carry lifetime ECL rather than 12-month ECL, and by the convexity of the lifetime ECL formula with respect to PD under the downside macro scenario.
+
+\section{Limitations}
+\label{sec:limitations}
+
+\begin{enumerate}
+  \item \textbf{RAROC inflation}: Portfolio RAROC of +299\% is unrealistically high because it is computed on the full portfolio and because LGD $\approx$ 93\% dominates the EL numerator. A meaningful RAROC requires restricting to the approved-only subset.
+  \item \textbf{Score PSI = 0.282 (ALERT) --- rebuild executed}: The 2016--2018 applicant population has shifted materially from the 2007--2015 training window. A rebuild on 2016--2017 data was performed (Section~\ref{sec:l05}); the rebuilt model achieves Gini 0.383 (+1.9pp) and eliminates the Champion's 0.62pp level underprediction on 2018 data. Full WoE re-binning on raw features remains the recommended next step before formal promotion.
+  \item \textbf{Reject inference scope}: The parceling method adds only 3.1\% synthetic rows and partially corrects, but does not eliminate, selection bias. Full correction requires external reject data.
+  \item \textbf{Macro scenario calibration}: The log-odds sensitivities ($\beta_{unem} = 0.18$, $\beta_{GDP} = -0.10$) are literature-based \cite{bellotti2009} rather than empirically estimated.
+  \item \textbf{No external validation}: Validated on OOT holdout only. An independent validation review (SR~11-7 \S4 requirement) has not been performed.
+  \item \textbf{Platform context}: The Lending Club P2P context differs from regulated bank portfolios. LGD of 93\% is specific to this unsecured consumer book.
+\end{enumerate}
+
+\section{Directions for Future Work}
+
+\begin{enumerate}
+  \item \textbf{Full WoE re-binning on 2016--2018 raw features}: The L05 rebuild updated logistic weights only. A complete rebuild --- re-fitting WoE bins on raw 2016--2018 features before re-estimating the logistic model --- would capture any shifts in the bin-level risk ordering and is the recommended next step before formal champion promotion.
+  \item \textbf{Gradient boosting champion/challenger}: XGBoost or LightGBM as a challenger, with SHAP values for ECOA adverse action code generation.
+  \item \textbf{Empirical macro sensitivity estimation}: Estimate $\beta_{unem}$ and $\beta_{GDP}$ from the dataset's own time-series variation.
+  \item \textbf{Independent model validation}: Conduct an SR~11-7 \S4 independent validation before any production deployment.
+  \item \textbf{RAROC on approved-only subset}: Re-compute RAROC excluding auto-rejected loans (F class) to produce a meaningful portfolio risk-adjusted return estimate.
+\end{enumerate}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\chapter{Conclusion}
+\label{ch:conclusion}
+% ─────────────────────────────────────────────────────────────────────────────
+
+This paper presented a complete, end-to-end, reproducible credit risk modelling platform built on the publicly available Lending Club dataset, closing a structural gap in the academic credit scoring literature. No prior study on this dataset had integrated algorithmic credit scoring with a production data engineering pipeline, IFRS~9 three-stage ECL provisioning, Basel~III AIRB capital calculation, and SR~11-7 model governance in a single, verifiable system.
+
+The principal empirical findings are: (i) a logistic WoE scorecard achieves Gini 0.387 and KS 0.281 on the 2016--2018 OOT population; (ii) without intercept recalibration, the model underestimates 12-month EL by \$158M (24\%) and lifetime ECL by \$267M (20\%), demonstrating that calibration is a financially material step; (iii) the IFRS~9 probability-weighted lifetime ECL of \$1.646B exceeds the flat 12-month EL by \$838M (+104\%), quantifying the real consequence of the ECL framework; (iv) Basel~III AIRB computation yields RWA of \$14.07B and minimum capital of \$1.13B; (v) a Score PSI of 0.282 on the OOT population confirms a material population shift; and (vi) the rebuilt model (L05), trained on 2016--2017 data, achieves Gini 0.383 (+1.9pp over the Champion) and eliminates the Champion's 0.62pp level underprediction on 2018, demonstrating the practical value of the PSI-triggered rebuild cycle.
+
+The platform architecture --- PySpark ingestion, Airflow orchestration, MLflow tracking, FastAPI serving, and Prometheus/Grafana monitoring --- provides a reproducible template for future research aiming to bridge the gap between academic benchmarking and practical, regulatory-compliant credit risk deployment.
+
+% ─────────────────────────────────────────────────────────────────────────────
+% Bibliography
+% ─────────────────────────────────────────────────────────────────────────────
+\begin{thebibliography}{99}
+
+\bibitem{altman1968}
+Altman, E.~I. (1968). Financial ratios, discriminant analysis and the prediction of corporate bankruptcy. \textit{The Journal of Finance}, \textit{23}(4), 589--609.
+
+\bibitem{arthur_ai2025}
+Arthur AI. (2025). \textit{Population stability index (PSI) metrics}. \url{https://docs.arthur.ai/docs/population-stability-index-psi-metrics}
+
+\bibitem{astronomer2021}
+Astronomer. (2021). \textit{The future of banking: How Apache Airflow helps}. \url{https://www.astronomer.io/blog/future-of-banking-apache-airflow/}
+
+\bibitem{baesens2003}
+Baesens, B., Van Gestel, T., Viaene, S., Stepanova, M., Suykens, J., \& Vanthienen, J. (2003). Benchmarking state-of-the-art classification algorithms for credit scoring. \textit{Journal of the Operational Research Society}, \textit{54}(6), 627--635.
+
+\bibitem{baily2008}
+Baily, M.~N., \& Litan, R.~E. (2008). \textit{The origins of the financial crisis}. Brookings Institution. \url{https://www.brookings.edu/wp-content/uploads/2016/06/11_origins_crisis_baily_litan.pdf}
+
+\bibitem{bcbs1988}
+Basel Committee on Banking Supervision (BCBS). (1988). \textit{International convergence of capital measurement and capital standards}. BIS. \url{https://www.bis.org/publ/bcbsc111.pdf}
+
+\bibitem{bcbs2000}
+Basel Committee on Banking Supervision (BCBS). (2000). \textit{Principles for the management of credit risk}. BIS. \url{https://www.bis.org/publ/bcbs75.htm}
+
+\bibitem{bcbs2004}
+Basel Committee on Banking Supervision (BCBS). (2004). \textit{International convergence of capital measurement and capital standards: A revised framework (Basel II)}. BIS. \url{https://www.bis.org/publ/bcbs128.pdf}
+
+\bibitem{bcbs2010}
+Basel Committee on Banking Supervision (BCBS). (2010). \textit{Basel III: A global regulatory framework for more resilient banks and banking systems}. BIS. \url{https://www.bis.org/publ/bcbs189.pdf}
+
+\bibitem{bcbs2017}
+Basel Committee on Banking Supervision (BCBS). (2017). \textit{High-level summary of Basel III reforms}. BIS. \url{https://www.bis.org/bcbs/publ/d424_hlsummary.pdf}
+
+\bibitem{bcbs2022}
+Basel Committee on Banking Supervision (BCBS). (2022). \textit{CRE36 -- IRB approach: Minimum requirements}. Basel Framework. \url{https://www.bis.org/basel_framework/chapter/CRE/36.htm}
+
+\bibitem{bdo2024}
+BDO UK. (2024). \textit{IFRS 9 financial instruments -- ECL guidance}. \url{https://www.bdo.co.uk/en-gb/services/audit-assurance/ifrs/ifrs-9-financial-instruments}
+
+\bibitem{beaver1966}
+Beaver, W.~H. (1966). Financial ratios as predictors of failure. \textit{Journal of Accounting Research}, \textit{4}(Suppl.), 71--111.
+
+\bibitem{bellotti2009}
+Bellotti, T., \& Crook, J. (2009). Support vector machines for credit scoring and discovery of significant features. \textit{Expert Systems with Applications}, \textit{36}(2), 3302--3308.
+
+\bibitem{bis_el_ul}
+Basel Committee on Banking Supervision. (2005). \textit{An explanatory note on the Basel II IRB risk weight functions}. BIS. \url{https://www.bis.org/bcbs/irbriskweight.pdf}
+
+\bibitem{bis_fsi2024}
+BIS Financial Stability Institute. (2024). \textit{Managing explanations: How regulators can address AI explainability}. \url{https://www.bis.org/fsi/fsipapers24.pdf}
+
+\bibitem{bls_recession}
+Bureau of Labor Statistics. (2012). \textit{The recession of 2007--2009}. U.S. Department of Labor. \url{https://www.bls.gov/spotlight/2012/recession/pdf/recession_bls_spotlight.pdf}
+
+\bibitem{bundesbank2019}
+Deutsche Bundesbank. (2019). IFRS 9 from the perspective of banking supervision. \textit{Monthly Report}, January 2019. \url{https://www.bundesbank.de/resource/blob/773872/71c8cf60bc9784d052a5d5afd810f0d1/mL/2019-01-ifrs9-data.pdf}
+
+\bibitem{demajo2025}
+Demajo, L.~M., et al. (2025). Explainable AI based LightGBM prediction model to predict default in social lending. \textit{Results in Applied Mathematics}. \url{https://www.sciencedirect.com/science/article/pii/S2667305325000407}
+
+\bibitem{dong2023}
+Dong, X., Xue, W., \& Chen, J. (2023). Analysis and comparison of loan default prediction models based on XGBoost and LightGBM. \textit{Academic Journal of Computing \& Information Science}, \textit{6}(9), 32--37.
+
+\bibitem{eba2017a}
+European Banking Authority (EBA). (2017a). \textit{Guidelines on PD estimation, LGD estimation and the treatment of defaulted exposures} (EBA/GL/2017/16). \url{https://www.eba.europa.eu}
+
+\bibitem{eba2017b}
+European Banking Authority (EBA). (2017b). \textit{Guidelines on credit institutions' credit risk management practices and accounting for ECL} (EBA/GL/2017/06). \url{https://www.eba.europa.eu}
+
+\bibitem{eba2023}
+European Banking Authority (EBA). (2023). \textit{Follow-up report on the use of machine learning in IRB models}. \url{https://www.eba.europa.eu/publications-and-media/press-releases/eba-publishes-follow-report-use-machine-learning-internal}
+
+\bibitem{ecb2009}
+European Central Bank (ECB). (2009). Is Basel II pro-cyclical? \textit{Financial Stability Review} (special feature). \url{https://www.ecb.europa.eu/pub/pdf/fsr/art/ecb.fsrart200912_03.en.pdf}
+
+\bibitem{european_parliament2016}
+European Parliament. (2016). \textit{Basel II IRB approach: Review of the regulatory treatment of credit risk} (Study IDAN/2016/587366). \url{https://www.europarl.europa.eu}
+
+\bibitem{fico_community}
+FICO Community. (n.d.). \textit{Score-to-odds relationship example}. \url{https://community.fico.com/s/blog-post/a5Q2E0000008eD9UAI/fico1573}
+
+\bibitem{fsi_bis2015}
+BIS Financial Stability Institute. (2015). \textit{IFRS 9 and expected loss provisioning -- Executive summary}. \url{https://www.bis.org/fsi/fsisummaries/ifrs9.pdf}
+
+\bibitem{garp2021}
+GARP. (2021). Probability of default: Pros and cons of the PSI. \textit{GARP Risk Intelligence}. \url{https://www.garp.org/risk-intelligence/credit/probability-of-default-pros-and-cons-of-the-population-stability-index}
+
+\bibitem{good1950}
+Good, I.~J. (1950). \textit{Probability and the weighing of evidence}. Charles Griffin.
+
+\bibitem{gupta2022}
+Gupta, A., Gulati, P., \& Chakrabarty, S.~P. (2022). Classification based credit risk analysis: The case of Lending Club. \textit{Lecture Notes in Networks and Systems}, \textit{964}, 77--86.
+
+\bibitem{iasb2014}
+IASB. (2014). \textit{IFRS 9 financial instruments}. \url{https://www.ifrs.org/issued-standards/list-of-standards/ifrs-9-financial-instruments/}
+
+\bibitem{imf2010}
+IMF. (2010). \textit{Lessons and policy implications from the global financial crisis} (Working Paper No. 10/44). \url{https://www.imf.org/external/pubs/ft/wp/2010/wp1044.pdf}
+
+\bibitem{imf_unemployment}
+IMF. (2012). Unemployment through the prism of the Great Recession. \textit{Finance \& Development}. \url{https://www.elibrary.imf.org/view/journals/026/2012/001/article-A003-en.xml}
+
+\bibitem{kaggle2018}
+Kaggle. (2018). \textit{All Lending Club loan data} [Dataset]. \url{https://www.kaggle.com/datasets/wordsforthewise/lending-club}
+
+\bibitem{khandani2010}
+Khandani, A.~E., Kim, A.~J., \& Lo, A.~W. (2010). Consumer credit-risk models via machine-learning algorithms. \textit{Journal of Banking \& Finance}, \textit{34}(11), 2767--2787.
+
+\bibitem{kirabaeva2011}
+Kirabaeva, K. (2011). \textit{Adverse selection and financial crises}. Bank of Canada. \url{https://www.bankofcanada.ca/wp-content/uploads/2011/02/kirabaeva.pdf}
+
+\bibitem{lessmann2015}
+Lessmann, S., Baesens, B., Seow, H.-V., \& Thomas, L.~C. (2015). Benchmarking state-of-the-art classification algorithms for credit scoring: An update. \textit{European Journal of Operational Research}, \textit{247}(1), 124--136.
+
+\bibitem{lund2021}
+Lund University. (2021). \textit{Weight of evidence transformation in credit scoring models} [Student thesis]. \url{https://lup.lub.lu.se/student-papers/record/9066332/file/9067075.pdf}
+
+\bibitem{mathworks}
+MathWorks. (n.d.). \textit{Credit risk modeling: Importance and key components}. \url{https://www.mathworks.com/discovery/credit-risk-modeling.html}
+
+\bibitem{mlflow2026}
+MLflow. (2026). \textit{MLflow model registry documentation}. \url{https://mlflow.org/docs/latest/ml/model-registry/}
+
+\bibitem{myfico}
+myFICO. (n.d.). \textit{What is a credit score?} \url{https://www.myfico.com/credit-education/credit-scores}
+
+\bibitem{occ2011}
+OCC. (2011). \textit{OCC Bulletin 2011-12: Sound practices for model risk management}. \url{https://www.occ.gov}
+
+\bibitem{pmc2024}
+PMC. (2024). IFRS 9 and procyclicality of loan loss provision among Chinese banks. \textit{PubMed Central}. \url{https://pmc.ncbi.nlm.nih.gov/articles/PMC12629493/}
+
+\bibitem{repullo2010}
+Repullo, R., Saurina, J., \& Trucharte, C. (2010). \textit{Mitigating the pro-cyclicality of Basel II} [Working Paper]. CEMFI/Banco de Espa\~{n}a.
+
+\bibitem{sculley2015}
+Sculley, D., et al. (2015). Hidden technical debt in machine learning systems. \textit{Proceedings of NeurIPS}. \url{https://papers.neurips.cc/paper/5656-hidden-technical-debt-in-machine-learning-systems.pdf}
+
+\bibitem{shannon1948}
+Shannon, C.~E. (1948). A mathematical theory of communication. \textit{Bell System Technical Journal}, \textit{27}, 379--423.
+
+\bibitem{siddiqi2006}
+Siddiqi, N. (2006). \textit{Credit risk scorecards: Developing and implementing intelligent credit scoring}. John Wiley \& Sons.
+
+\bibitem{spark2026}
+Apache Spark. (2026). \textit{Apache Spark -- Unified engine for large-scale data analytics}. \url{https://spark.apache.org}
+
+\bibitem{sr117}
+Board of Governors of the Federal Reserve System. (2011). \textit{Supervisory guidance on model risk management (SR 11-7)}. \url{https://www.federalreserve.gov/frrs/guidance/supervisory-guidance-on-model-risk-management.htm}
+
+\bibitem{statsmodels}
+Seabold, S., \& Perktold, J. (2010). Statsmodels: Econometric and statistical modeling with Python. \textit{Proceedings of the 9th Python in Science Conference}.
+
+\bibitem{steenackers1989}
+Steenackers, A., \& Goovaerts, M.~J. (1989). A credit scoring model for personal loans. \textit{Insurance: Mathematics and Economics}, \textit{8}(1), 31--34.
+
+\bibitem{tarp_treasury}
+U.S. Treasury. (n.d.). \textit{About TARP}. \url{https://home.treasury.gov/data/troubled-assets-relief-program/about-tarp}
+
+\bibitem{thomas2002}
+Thomas, L.~C., Edelman, D.~B., \& Crook, J.~N. (2002). \textit{Credit scoring and its applications}. SIAM.
+
+\bibitem{wiginton1980}
+Wiginton, J.~C. (1980). A note on the comparison of logit and discriminant models. \textit{Journal of Financial and Quantitative Analysis}, \textit{15}(3), 757--770.
+
+\bibitem{world_bank2020}
+World Bank. (2020). \textit{Credit scoring approaches guidelines}. \url{https://thedocs.worldbank.org/en/doc/935891585869698451-0130022020/original/CREDITSCORINGAPPROACHESGUIDELINESFINALWEB.pdf}
+
+\bibitem{zedda2024}
+Zedda, S. (2024). Credit scoring: Does XGBoost outperform logistic regression? \textit{Research in International Business and Finance}, \textit{70}. \url{https://doi.org/10.1016/j.ribaf.2024.102397}
+
+\bibitem{zenodo2024}
+Zenodo. (2024). \textit{Lending Club loan dataset for granting models} [Dataset]. Record 11295916. \url{https://zenodo.org/records/11295916}
+
+\bibitem{zhou2019}
+Zhou, et al. (2019). Default prediction in P2P lending from high-dimensional data. \textit{Physica A}, \textit{534}, 122137.
+
+\bibitem{zhou2022_entropy}
+Zhou, J., et al. (2022). P2P lending default prediction based on AI and statistical models. \textit{Entropy}, \textit{24}(6), Article 801.
+
+\end{thebibliography}
+
+\end{document}

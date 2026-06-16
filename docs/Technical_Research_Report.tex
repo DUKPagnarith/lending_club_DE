@@ -1,0 +1,117 @@
+\documentclass[12pt,a4paper]{article}
+
+% --- Packages ---
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath, amsfonts, amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs} % For professional tables
+\usepackage{hyperref}
+\usepackage{geometry}
+\usepackage{float}
+\usepackage{tabularx}
+\geometry{margin=1in}
+
+% --- Metadata ---
+\title{Credit Risk Modeling System: \\ Technical Research Report}
+\author{Data Engineering \& Risk Management Team}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This technical research report details the development, validation, and implementation of an end-to-end credit risk modeling system using the Lending Club dataset (2007--2018). The system encompasses a Probability of Default (PD) model via logistic regression, a two-stage Loss Given Default (LGD) model, and an Exposure at Default (EAD) model to compute Expected Loss (EL). Recent updates have aligned the framework with real-world banking and regulatory standards, including IFRS 9 three-stage Expected Credit Loss (ECL) provisioning and Basel Advanced IRB capital requirements. 
+\end{abstract}
+
+\section{Introduction}
+The accurate quantification of credit risk is fundamental to the stability and profitability of financial lending institutions. This project establishes a robust pipeline capable of predicting default probabilities and calculating expected credit losses. The models operate within the regulatory context of IFRS 9 (requiring probability-weighted, forward-looking lifetime ECL) and the Basel III framework (governing risk-weighted assets and capital reserves). 
+
+\section{Methodology}
+\subsection{Data Pipeline and Preprocessing}
+The dataset consists of 2.26 million loan applications. An out-of-time (OOT) split was utilized to prevent data leakage, designating 2007--2015 as the training set (831,051 loans) and 2016--2018 as the holdout testing set (538,515 loans). Weight of Evidence (WoE) encoding was applied to robustly handle non-linear relationships and missing values.
+
+\subsection{Model Architecture}
+The system employs a three-model architecture:
+\begin{itemize}
+    \item \textbf{Probability of Default (PD):} A logistic regression model trained with statsmodels, utilizing backward elimination for feature selection, scaled to a 300--850 credit scorecard.
+    \item \textbf{Loss Given Default (LGD):} A two-stage model addressing the zero-inflated nature of recoveries (a logistic stage predicting if any recovery occurs, and a linear stage predicting the recovery magnitude).
+    \item \textbf{Exposure at Default (EAD):} A linear regression predicting the Credit Conversion Factor (CCF).
+\end{itemize}
+
+\section{Results}
+The pipeline was executed end-to-end on the OOT test set, yielding robust discrimination metrics but identifying necessary calibration adjustments. 
+
+\subsection{Performance Metrics}
+Table \ref{tab:results} presents the quantitative evaluation of the models on the out-of-time test dataset, highlighting the post-calibration metrics.
+
+\begin{table}[H]
+\centering
+\caption{Key Performance and Portfolio Metrics (OOT Test Set)}
+\label{tab:results}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Metric} & \textbf{Value} \\ \midrule
+\textbf{Discrimination (PD Model)} & \\
+AUC & 0.694 \\
+Gini Coefficient & 0.387 \\
+Kolmogorov-Smirnov (KS) & 0.281 \\
+Brier Score & 0.172 \\ \midrule
+\textbf{Risk Parameters} & \\
+Mean Predicted PD & 25.27\% (Calibrated) \\
+Mean LGD & 92.19\% \\
+Downturn LGD & 93.76\% \\ \midrule
+\textbf{Portfolio Outcomes (\$3.26B Total EAD)} & \\
+Expected Loss (12-month) & \$808 Million \\
+IFRS 9 Lifetime ECL (Weighted) & \$1.646 Billion \\ \midrule
+\textbf{Stability} & \\
+Population Stability Index (Score PSI) & 0.282 (ALERT) \\ \bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Visualizations}
+The ROC curve demonstrates the discriminative power of the PD model on unseen data. The inclusion of these quantitative graphs ensures clarity for the stakeholders without causing text overflows.
+
+\begin{figure}[H]
+    \centering
+    % Scaling width to 0.7 of text width to ensure the image does not fall out of the screen
+    \includegraphics[width=0.7\textwidth]{../data/reports/L02_roc_curve.png}
+    \caption{Receiver Operating Characteristic (ROC) curve for the PD model.}
+    \label{fig:roc}
+\end{figure}
+
+Furthermore, the integration of IFRS 9 staging provides crucial insights into the provisioning requirements across different risk tiers.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.7\textwidth]{../data/reports/L03_ifrs9_ecl_staging.png}
+    \caption{IFRS 9 ECL Staging Distribution and Provisioning.}
+    \label{fig:ifrs9}
+\end{figure}
+
+\section{Implementation Plan}
+The rollout of the credit risk system follows a phased approach to ensure regulatory compliance and production stability. Recent milestones included intercept recalibration and scenario-weighted ECL calculations. 
+
+Table \ref{tab:timeline} outlines the structured timeline for the next updates.
+
+\begin{table}[H]
+\centering
+\caption{Phased Implementation and Rollout Milestones}
+\label{tab:timeline}
+\begin{tabularx}{\textwidth}{@{}lXl@{}}
+\toprule
+\textbf{Phase} & \textbf{Milestone Description} & \textbf{Status} \\ \midrule
+\textbf{Phase 1: Core Modeling} & Finalize PD, LGD, EAD architectures and WoE encoding. & Complete \\
+\textbf{Phase 2: Calibration} & Intercept log-odds shift for PD; implement Reject Inference. & Complete \\
+\textbf{Phase 3: Regulatory} & Implement IFRS 9 scenario-weighted lifetime ECL logic. & Complete \\
+\textbf{Phase 4: Orchestration} & Port notebook logic into Airflow DAGs and Spark jobs. & Pending \\
+\textbf{Phase 5: Serving} & Deploy FastAPI \texttt{/score} endpoint with stage outputs. & In Progress \\
+\textbf{Phase 6: Monitoring} & Establish Grafana dashboards for PSI and vintage analysis. & Pending \\
+\textbf{Phase 7: Governance} & Finalize SR 11-7 Model Card and compliance documentation. & Pending \\ \bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Conclusion}
+The deployed credit risk system effectively translates raw loan data into actionable risk metrics that satisfy both business optimization goals and stringent regulatory requirements (IFRS 9 and Basel III). While the model demonstrates strong discriminative power, continuous population monitoring has triggered a PSI alert (0.282), indicating significant data drift from the 2007--2015 training period to the 2016--2018 validation window. Future efforts will focus on retraining the model with more recent data and fully operationalizing the Airflow/FastAPI production infrastructure.
+
+\end{document}

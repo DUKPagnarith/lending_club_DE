@@ -1,0 +1,126 @@
+{
+  "__inputs": [
+    {"name": "DS_PROMETHEUS", "label": "Prometheus", "type": "datasource", "pluginId": "prometheus"},
+    {"name": "DS_POSTGRES",   "label": "PostgreSQL",  "type": "datasource", "pluginId": "postgres"}
+  ],
+  "title": "Credit Risk — Portfolio Dashboard (IFRS9 / RAROC / Vintage)",
+  "uid": "credit-risk-portfolio",
+  "tags": ["credit-risk", "ifrs9", "raroc", "vintage"],
+  "timezone": "browser",
+  "refresh": "6h",
+  "time": {"from": "now-1y", "to": "now"},
+  "schemaVersion": 38,
+  "panels": [
+    {
+      "id": 1,
+      "title": "IFRS 9 Stage Mix",
+      "type": "piechart",
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 0},
+      "targets": [
+        {
+          "datasource": {"type": "postgres", "uid": "${DS_POSTGRES}"},
+          "rawSql": "SELECT ifrs9_stage AS metric, COUNT(*) AS value FROM risk.expected_loss GROUP BY ifrs9_stage",
+          "format": "table"
+        }
+      ],
+      "options": {"pieType": "donut", "legend": {"displayMode": "table", "placement": "right"}},
+      "description": "Stage 1 = 12-mo ECL (performing) | Stage 2/3 = Lifetime ECL (SICR triggered)"
+    },
+    {
+      "id": 2,
+      "title": "Total ECL by Stage ($M)",
+      "type": "bargauge",
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 0},
+      "fieldConfig": {"defaults": {"unit": "currencyUSD", "min": 0}},
+      "targets": [
+        {
+          "datasource": {"type": "postgres", "uid": "${DS_POSTGRES}"},
+          "rawSql": "SELECT ifrs9_stage AS metric, SUM(expected_loss)/1e6 AS value FROM risk.expected_loss GROUP BY ifrs9_stage ORDER BY ifrs9_stage",
+          "format": "table"
+        }
+      ],
+      "options": {"orientation": "horizontal", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "description": "ECL provision in $M per IFRS 9 stage"
+    },
+    {
+      "id": 3,
+      "title": "Key Portfolio KPIs",
+      "type": "stat",
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 0},
+      "targets": [
+        {
+          "datasource": {"type": "postgres", "uid": "${DS_POSTGRES}"},
+          "rawSql": "SELECT 'Mean PD' AS metric, ROUND(AVG(pd)*100,2) AS value FROM risk.expected_loss UNION ALL SELECT 'Mean LGD', ROUND(AVG(lgd)*100,2) FROM risk.expected_loss UNION ALL SELECT 'EL Rate%', ROUND(AVG(el_rate)*100,2) FROM risk.expected_loss UNION ALL SELECT 'Total EAD $B', ROUND(SUM(ead)/1e9,2) FROM risk.expected_loss",
+          "format": "table"
+        }
+      ],
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "value", "textMode": "value_and_name"},
+      "description": "Live portfolio-level risk metrics"
+    },
+    {
+      "id": 4,
+      "title": "Expected Loss by Risk Class",
+      "type": "barchart",
+      "gridPos": {"h": 9, "w": 12, "x": 0, "y": 8},
+      "fieldConfig": {"defaults": {"unit": "currencyUSD"}},
+      "targets": [
+        {
+          "datasource": {"type": "postgres", "uid": "${DS_POSTGRES}"},
+          "rawSql": "SELECT risk_class, SUM(expected_loss) AS total_el, COUNT(*) AS loans FROM risk.expected_loss GROUP BY risk_class ORDER BY risk_class",
+          "format": "table"
+        }
+      ],
+      "options": {"xField": "risk_class", "stacking": "none"},
+      "description": "EL concentration by internal risk grade (AA = best, F = worst)"
+    },
+    {
+      "id": 5,
+      "title": "Decision Distribution",
+      "type": "piechart",
+      "gridPos": {"h": 9, "w": 12, "x": 12, "y": 8},
+      "targets": [
+        {
+          "datasource": {"type": "postgres", "uid": "${DS_POSTGRES}"},
+          "rawSql": "SELECT decision AS metric, COUNT(*) AS value FROM risk.expected_loss GROUP BY decision",
+          "format": "table"
+        }
+      ],
+      "options": {"pieType": "pie", "legend": {"displayMode": "table", "placement": "right"}},
+      "description": "AUTO_APPROVE | APPROVE | REJECT | AUTO_REJECT"
+    },
+    {
+      "id": 6,
+      "title": "RAROC by Risk Class",
+      "type": "barchart",
+      "gridPos": {"h": 9, "w": 12, "x": 0, "y": 17},
+      "fieldConfig": {"defaults": {"unit": "percentunit", "thresholds": {
+        "mode": "absolute",
+        "steps": [{"color": "red", "value": null}, {"color": "yellow", "value": 0.02}, {"color": "green", "value": 0.05}]
+      }}},
+      "targets": [
+        {
+          "datasource": {"type": "postgres", "uid": "${DS_POSTGRES}"},
+          "rawSql": "SELECT risk_class, AVG(annualized_roi) AS mean_raroc FROM risk.expected_loss GROUP BY risk_class ORDER BY risk_class",
+          "format": "table"
+        }
+      ],
+      "options": {"xField": "risk_class"},
+      "description": "RAROC > 2.15% (US base rate) = positive return"
+    },
+    {
+      "id": 7,
+      "title": "Scoring Volume (Last 30 days)",
+      "type": "timeseries",
+      "gridPos": {"h": 9, "w": 12, "x": 12, "y": 17},
+      "targets": [
+        {
+          "datasource": {"type": "postgres", "uid": "${DS_POSTGRES}"},
+          "rawSql": "SELECT DATE_TRUNC('day', calc_date::timestamp) AS time, COUNT(*) AS loans_scored FROM risk.expected_loss WHERE calc_date::timestamp > NOW() - INTERVAL '30 days' GROUP BY 1 ORDER BY 1",
+          "format": "time_series"
+        }
+      ],
+      "options": {"legend": {"displayMode": "list"}},
+      "description": "Daily scoring throughput — confirms pipeline is running"
+    }
+  ]
+}

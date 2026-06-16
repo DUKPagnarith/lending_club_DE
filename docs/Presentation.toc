@@ -1,0 +1,6 @@
+\beamer@sectionintoc {1}{Act I \textemdash {} The Problem}{3}{0}{1}
+\beamer@sectionintoc {2}{Act II \textemdash {} The Foundation}{6}{0}{2}
+\beamer@sectionintoc {3}{Act III \textemdash {} Building the Model}{12}{0}{3}
+\beamer@sectionintoc {4}{Act IV \textemdash {} The Reckoning}{20}{0}{4}
+\beamer@sectionintoc {5}{Act V \textemdash {} The Warning}{25}{0}{5}
+\beamer@sectionintoc {6}{Epilogue \textemdash {} What We Learned}{28}{0}{6}

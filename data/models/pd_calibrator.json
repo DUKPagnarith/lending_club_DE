@@ -1,0 +1,14 @@
+{
+  "method": "intercept_logodds_shift",
+  "delta": 0.320382,
+  "pre_mean_pd": 0.201814,
+  "post_mean_pd": 0.252669,
+  "target_dr": 0.252669,
+  "hl_pre": 10039,
+  "hl_post": 403,
+  "brier_pre": 0.175,
+  "brier_post": 0.1722,
+  "auc": 0.6937,
+  "reference": "EBA 2017a / BCBS 2005 \u00a7468",
+  "fitted_date": "2026-06-07"
+}

@@ -13,7 +13,9 @@ _models: dict = {"loaded": False}
 def load_models():
     base = os.getenv("MODEL_PATH", "/app/data")
     proc = f"{base}/processed"
-    mods = f"{base}/artifacts"
+    # Prefer the freshly-trained notebook models in data/models/; fall back to
+    # the legacy data/artifacts/ only if models/ is absent.
+    mods = f"{base}/models" if os.path.isdir(f"{base}/models") else f"{base}/artifacts"
 
     try:
         scorecard   = pd.read_csv(f"{proc}/scorecard.csv")
@@ -44,9 +46,9 @@ def load_models():
             "final_features": final_feats,
             "n_features": n_features,
             "intercept": intercept,
-            "version": "1.0.0",
+            "version": "2.0.0",
         })
-        print(f"Models loaded: scorecard={len(scorecard)} features, version=1.0.0")
+        print(f"Models loaded from {mods}: scorecard={len(scorecard)} features, version=2.0.0")
     except Exception as e:
         print(f"WARNING: Could not load models: {e}")
         _models["loaded"] = False

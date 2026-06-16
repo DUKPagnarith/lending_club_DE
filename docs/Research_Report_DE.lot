@@ -1,0 +1,18 @@
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {2.1}{\ignorespaces Technology stack and rationale\relax }}{9}{table.caption.5}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {3.1}{\ignorespaces PostgreSQL schema design\relax }}{13}{table.caption.7}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {4.1}{\ignorespaces Column removal categories in DAG-02\relax }}{17}{table.caption.9}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {5.1}{\ignorespaces PySpark job performance on single-node Docker Compose\relax }}{25}{table.caption.10}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {6.1}{\ignorespaces MLflow experiments and logged artefacts\relax }}{27}{table.caption.11}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {8.1}{\ignorespaces Prometheus metrics published by DAG-06\relax }}{30}{table.caption.12}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {9.1}{\ignorespaces Verified pipeline outputs (v4 run, 2026-06-07)\relax }}{33}{table.caption.13}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }

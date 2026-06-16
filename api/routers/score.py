@@ -8,6 +8,60 @@ router = APIRouter()
 
 RISK_CLASS_BINS   = [300, 460, 500, 540, 580, 620, 660, 700, 740, 780, 851]
 RISK_CLASS_LABELS = ['F', 'DD', 'CD', 'C', 'BC', 'B', 'BB', 'AB', 'A', 'AA']
+
+# ECOA Regulation B adverse-action code map
+# Maps scorecard feature names → plain-language ECOA reason codes.
+# Required by 15 U.S.C. §1691(d) (ECOA) and 12 C.F.R. §202.9 (Reg B).
+_ECOA_CODE_MAP = {
+    'fico_600_640':      'AA01 — Credit score below prime tier threshold',
+    'fico_640_680':      'AA01 — Credit score indicates prior delinquency risk',
+    'int_rate_117_148':  'AA02 — Interest rate reflects elevated borrower risk',
+    'int_rate_148_176':  'AA02 — High interest rate tier indicating below-prime credit',
+    'int_rate_176_200':  'AA02 — Very high rate indicates subprime credit profile',
+    'verif_Source_Verified': 'AA03 — Income not independently verified',
+    'verif_Verified':    'AA03 — Income verification reflects employment risk',
+    'revol_util_lt020':  'AA04 — Very low revolving utilisation (thin credit file)',
+    'cr_line_140_200':   'AA05 — Length of established credit history is limited',
+    'cr_line_lt80':      'AA05 — Short credit history insufficient to assess risk',
+    'delinq_lt24':       'AA06 — Recent delinquency on credit record',
+    'delinq_24_48':      'AA06 — Delinquency within past four years',
+    'initial_list_w':    'AA07 — Loan listing category affects credit assessment',
+    'dti_28_35':         'AA08 — Debt-to-income ratio exceeds guideline threshold',
+    'annual_inc_25k_50k':'AA09 — Income level insufficient relative to loan amount',
+    'grade_E':           'AA10 — Internal risk grade indicates elevated default risk',
+    'grade_D':           'AA10 — Internal risk grade below approval threshold',
+    'inq_2_3':           'AA11 — Multiple recent credit inquiries',
+    'purpose_other':     'AA12 — Loan purpose does not qualify under credit policy',
+}
+
+
+def _adverse_action_codes(X_row: pd.DataFrame, score_map: dict,
+                           final_feats: list, n: int = 4) -> List[str]:
+    """
+    Return the top-n ECOA adverse-action reason codes for a rejected applicant.
+    Identifies features with the most negative score contribution, maps each
+    to a plain-language ECOA reason code per Reg B §202.9(b)(2).
+    """
+    contribs = []
+    for feat in final_feats:
+        val = float(X_row[feat].iloc[0]) if feat in X_row.columns else 0.0
+        sc  = score_map.get(feat, 0)
+        contribs.append((feat, val * sc))
+
+    # Sort ascending — most negative contribution first
+    contribs.sort(key=lambda x: x[1])
+    codes = []
+    seen  = set()
+    for feat, contrib in contribs:
+        if len(codes) >= n:
+            break
+        if contrib >= 0:
+            break   # no more negative contributors
+        code = _ECOA_CODE_MAP.get(feat, f"AA99 — {feat.replace('_', ' ').title()}")
+        if code not in seen:
+            codes.append(code)
+            seen.add(code)
+    return codes
 US_BASE_RATE      = 0.0215
 FACTOR = 20 / np.log(2)
 OFFSET = 600.0
@@ -126,35 +180,26 @@ def score_loan(req: ScoreRequest):
     pd_prob  = float(1 - p_good)
 
     # ── LGD (two-stage) ──────────────────────────────────────────────────
-    lgd_features = ['funded_amnt', 'term_int', 'int_rate', 'dti', 'fico_score',
-                    'annual_inc', 'revol_util', 'inq_last_6mths']
-    lgd_X = pd.DataFrame([{
-        'funded_amnt': req.funded_amnt, 'term_int': req.term_int,
-        'int_rate': req.int_rate, 'dti': req.dti, 'fico_score': req.fico_score,
-        'annual_inc': req.annual_inc, 'revol_util': req.revol_util,
-        'inq_last_6mths': req.inq_last_6mths,
-    }])
-    available = [c for c in lgd_features if c in lgd_X.columns]
-    lgd_X = lgd_X[available].fillna(0)
+    # LGD & EAD models were trained on the SAME WoE dummy matrix as the notebook,
+    # so we feed the dummy row (aligned to dummy_cols order), not raw features.
+    X_dummies = X.reindex(columns=models["dummy_cols"], fill_value=0)
 
-    try:
-        recovery_prob = float(lgd_stage1.predict_proba(lgd_X)[0][1])
-        recovery_amt  = float(max(0, lgd_stage2.predict(lgd_X)[0]))
-        lgd = float(1 - recovery_prob * recovery_amt)
-        lgd = max(0.0, min(1.0, lgd))
-    except Exception:
-        lgd = 0.45  # fallback industry average
+    recovery_prob = float(lgd_stage1.predict_proba(X_dummies)[0][1])
+    recovery_amt  = float(np.clip(lgd_stage2.predict(X_dummies)[0], 0, 1))
+    lgd = float(np.clip(1 - recovery_prob * recovery_amt, 0, 1))
 
-    # ── EAD ─────────────────────────────────────────────────────────────
-    try:
-        ead_X_scaled = ead_scaler.transform(lgd_X)
-        ccf = float(max(0, min(1, ead_model.predict(ead_X_scaled)[0])))
-        ead = float(req.funded_amnt * ccf)
-    except Exception:
-        ead = float(req.funded_amnt)
+    # ── EAD (same dummy matrix, scaled) ──────────────────────────────────
+    ccf = float(np.clip(ead_model.predict(ead_scaler.transform(X_dummies))[0], 0, 1))
+    ead = float(req.funded_amnt * ccf)
 
-    # ── Expected Loss ────────────────────────────────────────────────────
+    # ── Expected Loss (= 12-month ECL for a performing loan) ─────────────
     el = pd_prob * lgd * ead
+
+    # ── IFRS 9 stage at origination ──────────────────────────────────────
+    # A freshly-underwritten loan is performing (no SICR, no DPD) → Stage 1,
+    # which carries 12-month ECL. Stage 2/3 (lifetime ECL) arise later when
+    # SICR triggers fire — see L03 for the full three-stage model.
+    ifrs9_stage = "Stage 1 — 12-month ECL (performing at origination)"
 
     # ── Risk class ───────────────────────────────────────────────────────
     risk_class = RISK_CLASS_LABELS[-1]
@@ -177,6 +222,14 @@ def score_loan(req: ScoreRequest):
     else:
         decision = 'REJECT'
 
+    # ── ECOA Reg B adverse-action codes (only for rejections) ────────────
+    # Required by 15 U.S.C. §1691(d): rejected applicants must receive the
+    # specific reasons for the adverse action in plain language.
+    score_map_full = dict(zip(scorecard["Feature"], scorecard["Score"]))
+    adverse_codes: List[str] = []
+    if decision in ('REJECT', 'AUTO_REJECT'):
+        adverse_codes = _adverse_action_codes(X, score_map_full, final_feats, n=4)
+
     return ScoreResponse(
         pd=round(pd_prob, 6),
         lgd=round(lgd, 6),
@@ -186,5 +239,7 @@ def score_loan(req: ScoreRequest):
         risk_class=risk_class,
         decision=decision,
         annualized_roi=round(annualized_roi, 6),
+        ifrs9_stage=ifrs9_stage,
+        adverse_action_codes=adverse_codes,
         model_version=models["version"],
     )

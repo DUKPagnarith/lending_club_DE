@@ -2,7 +2,7 @@
 PSI Monitor — computes Population Stability Index for all model inputs and credit scores.
 Compares reference population (train) vs monitoring population (OOT/new data).
 """
-import os, sys, json, pickle
+import os, sys, json, pickle, joblib
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 import numpy as np
@@ -76,13 +76,23 @@ def run_psi_suite(reference_date="2007-2015", monitoring_date="2016-2018"):
             results.append({'variable': var, 'type': 'Continuous',
                             'psi': psi_val, 'status': psi_status(psi_val)})
 
-    # ── Score PSI ─────────────────────────────────────────────────────────
+    # ── Score PSI (uses scorecard.csv — no pd_model.pkl needed) ──────────
     try:
-        with open(f"{MODEL_DIR}/pd_model.pkl", 'rb') as f:
-            pd_model = pickle.load(f)
-        avail     = [c for c in dummy_cols if c in ref.columns]
-        ref_scores = pd_model.compute_scores(ref[avail].fillna(0))
-        act_scores = pd_model.compute_scores(act[avail].fillna(0))
+        scorecard  = pd.read_csv(f"{DATA_DIR}/scorecard.csv")
+        FACTOR     = 20 / np.log(2)
+        OFFSET     = 600.0
+        score_map  = dict(zip(scorecard["Feature"], scorecard["Score"]))
+        avail      = [c for c in dummy_cols if c in ref.columns]
+
+        def _scores(df):
+            s = pd.Series(OFFSET, index=df.index)
+            for feat, sc in score_map.items():
+                if feat in df.columns:
+                    s += df[feat].fillna(0).astype(float) * sc
+            return s.round().clip(300, 850).astype(int)
+
+        ref_scores = _scores(ref[avail])
+        act_scores = _scores(act[avail])
         score_psi  = compute_psi_continuous(ref_scores.values, act_scores.values)
         results.append({'variable': 'credit_score (★)', 'type': 'Score',
                         'psi': score_psi, 'status': psi_status(score_psi)})

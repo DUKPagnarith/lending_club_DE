@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List
 
 
 class ScoreRequest(BaseModel):
@@ -43,6 +43,12 @@ class ScoreResponse(BaseModel):
     risk_class: str = Field(..., description="Risk class AA | A | AB | BB | B | BC | C | CD | DD | F")
     decision: str = Field(..., description="AUTO_APPROVE | APPROVE | REJECT | AUTO_REJECT")
     annualized_roi: float = Field(..., description="Annualized ROI after expected loss")
+    ifrs9_stage: str = Field(..., description="IFRS 9 stage at origination (12-month vs lifetime ECL)")
+    adverse_action_codes: List[str] = Field(
+        default=[],
+        description="ECOA Reg B adverse action codes (top-4 negative score contributors). "
+                    "Populated only when decision is REJECT or AUTO_REJECT."
+    )
     model_version: str = Field(..., description="Model version used")
 
 

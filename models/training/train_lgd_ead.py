@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import mlflow
 
-from ml.models.lgd_model import LGDModel, EADModel
+from models.architectures.lgd_model import LGDModel, EADModel
 
 DATA_DIR   = "data/processed"
 MODEL_DIR  = "data/models"

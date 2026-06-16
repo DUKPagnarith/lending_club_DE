@@ -11,8 +11,8 @@ import pandas as pd
 import mlflow
 import mlflow.sklearn
 
-from ml.models.pd_model import PDModel
-from ml.evaluation.metrics import evaluate_pd, decile_analysis
+from models.architectures.pd_model import PDModel
+from models.evaluation.metrics import evaluate_pd, decile_analysis
 
 # ── Config ───────────────────────────────────────────────────────────────
 DATA_DIR    = "data/processed"

@@ -1,0 +1,43 @@
+\contentsline {chapter}{Abstract}{1}{chapter*.1}%
+\contentsline {chapter}{\numberline {1}Introduction}{6}{chapter.1}%
+\contentsline {section}{\numberline {1.1}Motivation}{6}{section.1.1}%
+\contentsline {section}{\numberline {1.2}What is Data Engineering in Credit Risk?}{6}{section.1.2}%
+\contentsline {section}{\numberline {1.3}Paper Structure}{7}{section.1.3}%
+\contentsline {chapter}{\numberline {2}System Architecture}{8}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Architecture Overview}{8}{section.2.1}%
+\contentsline {section}{\numberline {2.2}Technology Stack}{8}{section.2.2}%
+\contentsline {section}{\numberline {2.3}End-to-End Data Flow}{10}{section.2.3}%
+\contentsline {section}{\numberline {2.4}Infrastructure: Docker Compose Services}{12}{section.2.4}%
+\contentsline {chapter}{\numberline {3}Database Design}{13}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Five-Schema Medallion Architecture}{13}{section.3.1}%
+\contentsline {section}{\numberline {3.2}Key Design Decisions}{14}{section.3.2}%
+\contentsline {chapter}{\numberline {4}The Six Pipeline DAGs}{15}{chapter.4}%
+\contentsline {section}{\numberline {4.1}DAG-01: Data Ingestion}{15}{section.4.1}%
+\contentsline {section}{\numberline {4.2}DAG-02: Data Cleaning}{17}{section.4.2}%
+\contentsline {section}{\numberline {4.3}DAG-02b: Feature Engineering}{18}{section.4.3}%
+\contentsline {section}{\numberline {4.4}DAG-03: PD Model Training}{19}{section.4.4}%
+\contentsline {section}{\numberline {4.5}DAG-04: LGD and EAD Model Training}{20}{section.4.5}%
+\contentsline {section}{\numberline {4.6}DAG-05: Batch Scoring}{21}{section.4.6}%
+\contentsline {section}{\numberline {4.7}DAG-06: Model Monitoring}{22}{section.4.7}%
+\contentsline {chapter}{\numberline {5}PySpark Transformation Jobs}{23}{chapter.5}%
+\contentsline {section}{\numberline {5.1}Why Apache Spark?}{23}{section.5.1}%
+\contentsline {section}{\numberline {5.2}Spark Job 01: Ingestion (\texttt {01\_ingest.py})}{23}{section.5.2}%
+\contentsline {section}{\numberline {5.3}Spark Job 02: Cleaning (\texttt {02\_clean.py})}{24}{section.5.3}%
+\contentsline {section}{\numberline {5.4}Performance Benchmarks}{25}{section.5.4}%
+\contentsline {chapter}{\numberline {6}MLflow Experiment Tracking and Model Registry}{26}{chapter.6}%
+\contentsline {section}{\numberline {6.1}Why MLflow?}{26}{section.6.1}%
+\contentsline {section}{\numberline {6.2}Experiments Tracked}{27}{section.6.2}%
+\contentsline {section}{\numberline {6.3}Model Registry Promotion Workflow}{27}{section.6.3}%
+\contentsline {chapter}{\numberline {7}Real-Time Scoring Service}{28}{chapter.7}%
+\contentsline {section}{\numberline {7.1}FastAPI Architecture}{28}{section.7.1}%
+\contentsline {section}{\numberline {7.2}Feature Pipeline at Serve Time}{28}{section.7.2}%
+\contentsline {section}{\numberline {7.3}Performance Target}{29}{section.7.3}%
+\contentsline {chapter}{\numberline {8}Monitoring Infrastructure}{30}{chapter.8}%
+\contentsline {section}{\numberline {8.1}Prometheus Metrics}{30}{section.8.1}%
+\contentsline {section}{\numberline {8.2}Grafana Dashboards}{30}{section.8.2}%
+\contentsline {section}{\numberline {8.3}Alert Routing}{31}{section.8.3}%
+\contentsline {chapter}{\numberline {9}Verified Pipeline Run Results}{32}{chapter.9}%
+\contentsline {chapter}{\numberline {10}Discussion}{34}{chapter.10}%
+\contentsline {section}{\numberline {10.1}Key Design Decisions and Their Rationale}{34}{section.10.1}%
+\contentsline {section}{\numberline {10.2}Limitations and Next Steps}{35}{section.10.2}%
+\contentsline {chapter}{\numberline {11}Conclusion}{36}{chapter.11}%

@@ -1,0 +1,1163 @@
+\documentclass[aspectratio=169,11pt]{beamer}
+
+% ─── Theme & colours ─────────────────────────────────────────────────────────
+\usetheme{Madrid}
+\usecolortheme{whale}
+\usefonttheme{professionalfonts}
+
+\definecolor{itcblue}{RGB}{0,51,102}
+\definecolor{itcgold}{RGB}{204,153,0}
+\definecolor{alertred}{RGB}{180,30,30}
+\definecolor{okgreen}{RGB}{30,130,60}
+\definecolor{lightgray}{RGB}{245,245,245}
+
+\setbeamercolor{palette primary}{bg=itcblue,fg=white}
+\setbeamercolor{palette secondary}{bg=itcblue!80,fg=white}
+\setbeamercolor{palette tertiary}{bg=itcblue!60,fg=white}
+\setbeamercolor{palette quaternary}{bg=itcblue,fg=white}
+\setbeamercolor{structure}{fg=itcblue}
+\setbeamercolor{section in toc}{fg=itcblue}
+\setbeamercolor{alerted text}{fg=alertred}
+\setbeamercolor{block title}{bg=itcblue,fg=white}
+\setbeamercolor{block body}{bg=lightgray,fg=black}
+\setbeamercolor{block title alerted}{bg=alertred,fg=white}
+\setbeamercolor{block body alerted}{bg=red!8,fg=black}
+\setbeamercolor{block title example}{bg=okgreen,fg=white}
+\setbeamercolor{block body example}{bg=green!6,fg=black}
+
+% ─── Packages ────────────────────────────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{appendixnumberbeamer}
+
+\graphicspath{{../data/reports/}}
+
+% ─── Beamer settings ─────────────────────────────────────────────────────────
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}{%
+  \leavevmode%
+  \hbox{%
+    \begin{beamercolorbox}[wd=.33\paperwidth,ht=2.25ex,dp=1ex,left,leftskip=2mm]{palette primary}%
+      \usebeamerfont{author in head/foot}\insertshortauthor
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.34\paperwidth,ht=2.25ex,dp=1ex,center]{palette secondary}%
+      \usebeamerfont{title in head/foot}\insertshorttitle
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.33\paperwidth,ht=2.25ex,dp=1ex,right,rightskip=2mm]{palette primary}%
+      \usebeamerfont{date in head/foot}\insertshortdate\hspace{2em}\insertframenumber{}/\inserttotalframenumber
+    \end{beamercolorbox}}%
+}
+
+\setbeamertemplate{itemize item}{\color{itcblue}$\blacktriangleright$}
+\setbeamertemplate{itemize subitem}{\color{itcgold}$\bullet$}
+\setbeamersize{text margin left=5mm, text margin right=5mm}
+
+% ─── Macros ──────────────────────────────────────────────────────────────────
+\newcommand{\yes}{\textcolor{okgreen}{\checkmark}}
+\newcommand{\no}{\textcolor{alertred}{\texttimes}}
+\newcommand{\warn}{\textcolor{itcgold}{$\approx$}}
+\newcommand{\B}[1]{\textbf{#1}}
+\newcommand{\hl}[1]{\textcolor{itcblue}{\textbf{#1}}}
+
+% ─── Metadata ────────────────────────────────────────────────────────────────
+\title[Credit Risk Modelling \& Data Engineering]{Credit Risk Modelling and Data Engineering Pipeline}
+\subtitle{An End-to-End Production Credit Risk System on the Lending Club Dataset}
+\author[Rachana \textbar\ Soklang \textbar\ Pagnarith \textbar\ Devid]{%
+  SOPHON Rachana \and LOT Soklang \and DUK Pagnarith \and LENG Devid\\[3pt]
+  {\small Supervised by \textbf{Lecturer TOEM TOUCH}}%
+}
+\institute[ITC]{Institute of Technology of Cambodia --- Department of Information Technology}
+\date{Academic Year 2025--2026}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\begin{document}
+% ─────────────────────────────────────────────────────────────────────────────
+
+% ══════════════════════════════════════════════════════════════════════════════
+%  TITLE
+% ══════════════════════════════════════════════════════════════════════════════
+\begin{frame}[plain]
+  \titlepage
+\end{frame}
+
+% ══════════════════════════════════════════════════════════════════════════════
+%  TABLE OF CONTENTS
+% ══════════════════════════════════════════════════════════════════════════════
+\begin{frame}{Our Story in Five Acts}
+  \tableofcontents[hideallsubsections]
+\end{frame}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Act I \textemdash{} The Problem}
+% ══════════════════════════════════════════════════════════════════════════════
+
+% Slide: Hook — the 2008 crisis opens the story
+\begin{frame}[shrink=3]{When the Numbers Lie: The Cost of Getting Credit Risk Wrong}
+  \begin{columns}[T]
+    \column{0.55\textwidth}
+      \begin{block}{What Credit Risk Actually Is}
+        \small\textit{``The potential that a bank borrower or counterparty will fail to meet its obligations in accordance with agreed terms.''}\\[2pt]
+        \hfill --- Basel Committee on Banking Supervision
+      \end{block}
+      \vspace{4pt}
+      \small\textbf{When a borrower defaults, the lender loses:}
+      \begin{itemize}\small
+        \item Outstanding \B{principal}
+        \item Expected \B{interest income}
+        \item \B{Collection and legal costs}
+      \end{itemize}
+      \vspace{4pt}
+      $\text{Net Loss} = EAD \times LGD$
+
+    \column{0.42\textwidth}
+      \begin{alertblock}{2008: A Cautionary Tale}
+        \begin{itemize}\small
+          \item PD models calibrated on \B{rising house prices}
+          \item Ignored \B{correlated defaults} across mortgage pools
+          \item \B{\$700B TARP} bailout authorised
+          \item \B{+30M} global unemployed
+          \item US unemployment peaked at \B{10.0\%}
+        \end{itemize}
+      \end{alertblock}
+      \vspace{4pt}
+      \centering\small\textit{The models were technically correct.\\ The assumptions were catastrophically wrong.}
+  \end{columns}
+\end{frame}
+
+% Slide: Regulatory Response — the world's answer to the crisis
+\begin{frame}{The World's Response: Three Pillars of Regulation}
+  \begin{columns}[T]
+    \column{0.32\textwidth}
+      \begin{block}{Basel II/III (IRB)}\small
+        Banks estimate own \B{PD}, \B{LGD}, \B{EAD}\\[2pt]
+        Capital requirement:
+        \vspace{-4pt}\[CAR = \frac{\text{Capital}}{RWA} \geq 8\%\]\vspace{-4pt}
+        TtC PD for capital stability
+      \end{block}
+
+    \column{0.32\textwidth}
+      \begin{block}{IFRS 9 (ECL)}\small
+        Forward-looking \B{Expected Credit Loss}\\[2pt]
+        3-stage impairment:
+        \vspace{-4pt}\[ECL = \sum_t PD_t \cdot LGD_t \cdot EAD_t\]\vspace{-4pt}
+        PiT PD with macro scenarios
+      \end{block}
+
+    \column{0.32\textwidth}
+      \begin{block}{SR 11-7 (Model Risk)}\small
+        \B{Model risk management}\\[2pt]
+        Three pillars:
+        \begin{itemize}\footnotesize
+          \item Development \& use
+          \item Independent validation
+          \item Governance \& inventory
+        \end{itemize}
+      \end{block}
+  \end{columns}
+  \vspace{6pt}
+  \begin{center}
+    \hl{These frameworks transform credit scoring into a supervised, regulated modelling infrastructure.}
+  \end{center}
+\end{frame}
+
+% Slide: Research Gap — why existing work falls short
+\begin{frame}{The Gap Nobody Fills}
+  \begin{columns}[T]
+    \column{0.48\textwidth}
+      \begin{alertblock}{What Prior Lending Club Studies Do}
+        \begin{itemize}\small
+          \item Benchmark ML algorithms on static snapshots
+          \item Report AUC / accuracy metrics only
+          \item Stop at offline model evaluation
+          \item \no\ No regulatory compliance
+          \item \no\ No IFRS~9 / Basel III outputs
+          \item \no\ No production monitoring
+        \end{itemize}
+      \end{alertblock}
+      \vspace{4pt}
+      \centering\small\textit{A model that scores well on a leaderboard\\is not the same as a model a bank can use.}
+
+    \column{0.48\textwidth}
+      \begin{exampleblock}{Our 5 Contributions}
+        \begin{enumerate}\small
+          \item \B{Application-time features} --- no target leakage
+          \item \B{WoE scorecard} --- Basel interpretability + SR 11-7
+          \item \B{IFRS 9 \& Basel III} --- PiT and TtC PD alignment
+          \item \B{Credit policy engine} --- 10-class AA--F + ECOA
+          \item \B{Production MLOps} --- Airflow, MLflow, PSI/CSI
+        \end{enumerate}
+      \end{exampleblock}
+      \vspace{4pt}
+      \centering\small\textit{We cross that gap.}
+  \end{columns}
+\end{frame}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Act II \textemdash{} The Foundation}
+% ══════════════════════════════════════════════════════════════════════════════
+
+% Slide: Literature context — standing on shoulders
+\begin{frame}[shrink=8]{Standing on Shoulders: From Z-Scores to Gradient Boosting}
+  \begin{columns}[T]
+    \column{0.48\textwidth}
+      \textbf{Six Decades of Progress}
+      \begin{itemize}\small
+        \item Beaver (1966) --- univariate ratio analysis
+        \item Altman (1968) --- Z-score, MDA
+        \item Wiginton (1980) --- logistic regression
+        \item Siddiqi (2006) --- \B{WoE/IV scorecard}
+        \item Thomas et al. (2002) --- academic consolidation
+      \end{itemize}
+      \vspace{4pt}
+      \textbf{The ML Turn}
+      \begin{itemize}\small
+        \item Baesens et al. (2003) --- 41-classifier benchmark
+        \item Lessmann et al. (2015) --- ensembles win on AUC
+        \item Dong et al. (2023) --- XGBoost / LightGBM
+        \item Demajo et al. (2025) --- LightGBM + SHAP
+      \end{itemize}
+
+    \column{0.48\textwidth}
+      \begin{block}{The Core Tension}\small
+        \vspace{2pt}
+        \centering
+        \begin{tabular}{lcc}
+          \toprule
+          \textbf{Model} & \textbf{AUC} & \textbf{Regulatory}\\
+          \midrule
+          Logistic/WoE & Good   & \yes\ Easy\\
+          Random Forest & Better & \warn\ Moderate\\
+          XGBoost       & Best   & \no\ Hard\\
+          \bottomrule
+        \end{tabular}
+        \vspace{2pt}
+      \end{block}
+      \vspace{4pt}
+      \begin{alertblock}{EBA (2023)}\small
+        Interpretability and explainability remain the \B{key obstacles} to ML adoption in IRB models.
+      \end{alertblock}
+      \vspace{4pt}
+      \begin{block}{Our Answer}\small
+        Logistic regression with WoE encoding --- regulatory-grade interpretability, adequate discrimination (Gini 0.387).
+      \end{block}
+  \end{columns}
+\end{frame}
+
+% Slide: WoE/IV — the scorecard toolkit explained
+\begin{frame}[shrink=12]{The Scorecard Toolkit: WoE, IV, and Point Scaling}
+  \begin{columns}[T]
+    \column{0.50\textwidth}
+      \textbf{Weight of Evidence}
+      \[WoE_i = \ln\!\left(\frac{\%\,Goods_i}{\%\,Bads_i}\right)\]
+      \vspace{-2pt}{\small Positive WoE $\Rightarrow$ lower risk $\quad$ Negative $\Rightarrow$ higher risk}
+
+      \vspace{4pt}
+      \textbf{Information Value}
+      \[IV = \sum_i \left(\%G_i - \%B_i\right) \times WoE_i\]
+      \vspace{-4pt}
+      \begin{center}\small
+        \begin{tabular}{ll}
+          $IV < 0.02$ & Useless \\
+          $0.02$--$0.10$ & Weak \\
+          $0.10$--$0.30$ & Medium \\
+          $0.30$--$0.50$ & \textcolor{okgreen}{Strong} \\
+          $> 0.50$ & Suspicious \\
+        \end{tabular}
+      \end{center}
+
+    \column{0.46\textwidth}
+      \textbf{PDO Score Scaling}
+      \[Factor = \frac{PDO}{\ln 2} \approx 28.85, \quad Offset = 600\]
+      \vspace{-4pt}
+      \begin{exampleblock}{Our Scorecard Settings}\small
+        \begin{itemize}
+          \item Scale: \B{300--850} (FICO standard)
+          \item PDO: \B{20 points} doubles odds
+          \item Reference: \B{600} at 1:1 odds
+          \item Higher score = lower PD
+        \end{itemize}
+      \end{exampleblock}
+      \vspace{4pt}
+      {\small Missing values $\to$ \B{separate WoE bin}.\\
+      Missingness is behaviourally informative in credit data.}
+  \end{columns}
+\end{frame}
+
+% Slide: Dataset — introducing our 2.26M borrowers
+\begin{frame}[shrink=3]{Meet the Data: 2.26 Million Borrowers, 11 Years of History}
+  \begin{columns}[T]
+    \column{0.48\textwidth}
+      \begin{block}{Dataset Properties}
+        \small\begin{tabular}{ll}
+          \toprule
+          Rows        & 2,260,668 \\
+          Columns     & 151 \\
+          Date range  & 2007--2018 \\
+          File size   & $\approx$1.6 GB \\
+          Default rate& $\approx$17\% \\
+          100\% null  & 15 columns \\
+          \bottomrule
+        \end{tabular}
+      \end{block}
+      \vspace{4pt}
+      \begin{alertblock}{The First Trap}\small
+        File is \B{NOT sorted chronologically}. Must derive \texttt{issue\_year} from \texttt{issue\_d} for the OOT split.
+      \end{alertblock}
+
+    \column{0.48\textwidth}
+      \small\textbf{57 columns cut (5 reasons):}
+      \begin{enumerate}\small
+        \item 100\% null (15 cols)
+        \item Identifiers / constants (8)
+        \item Joint application $>99\%$ null (3)
+        \item Hardship/settlement $>97\%$ null (18)
+        \item \B{Post-application leakage} (15)\\
+        {\footnotesize\texttt{total\_pymnt}, \texttt{recoveries}, \texttt{out\_prncp}}
+      \end{enumerate}
+      \vspace{4pt}
+      \small\textbf{6 derived features added:}\\
+      {\footnotesize\texttt{fico\_score}, \texttt{term\_int}, \texttt{int\_rate} ($\div$100), \texttt{mths\_since\_issue\_d}, \texttt{mths\_since\_earliest\_cr\_line}, \texttt{emp\_length\_int}}
+  \end{columns}
+\end{frame}
+
+% Slide: Rule Zero — never look at the future
+\begin{frame}{Rule Zero: Never Train on What You Cannot See at Origination}
+  \begin{columns}[T]
+    \column{0.50\textwidth}
+      \small\textbf{Three target variables:}
+      \[
+        good\_bad = \begin{cases} 0 & \text{Charged Off / Default} \\ 1 & \text{Fully Paid} \end{cases}
+      \]
+      \vspace{-6pt}
+      \[recovery\_rate = \frac{recoveries}{funded\_amnt}\]
+      \vspace{-6pt}
+      \[ccf = \frac{funded\_amnt - total\_pymnt}{funded\_amnt}\]
+
+    \column{0.46\textwidth}
+      \begin{block}{Out-of-Time Split}\small
+        \begin{tabular}{llll}
+          \toprule
+          \textbf{Set} & \textbf{Years} & \textbf{Rows} & \textbf{DR} \\
+          \midrule
+          Train & 2007--15 & 831K & 18.6\% \\
+          OOT   & 2016--18 & 539K & 25.3\% \\
+          \bottomrule
+        \end{tabular}
+      \end{block}
+      \vspace{4pt}
+      \begin{alertblock}{Why Not Random Split?}\small
+        Random split leaks future patterns into training. OOT mirrors real deployment: train on history, score the future.
+      \end{alertblock}
+      \vspace{4pt}
+      \small\textbf{Reject inference (parceling):} 26,129 synthetic rejected applicants added to training set to partially correct selection bias.
+  \end{columns}
+\end{frame}
+
+% Slide: EDA — what the data reveals about risk
+\begin{frame}{What the Data Tells Us About Risk}
+  \begin{columns}[T]
+    \column{0.48\textwidth}
+      \includegraphics[width=\textwidth]{L01_default_rate_by_grade.png}
+      \vspace{1pt}
+      \begin{center}\footnotesize
+        Default rate \B{monotonically rises} Grade A ($\approx$5\%) $\to$ G ($>$35\%). Validates WoE ordering and 10-class credit policy.
+      \end{center}
+
+    \column{0.48\textwidth}
+      \includegraphics[width=\textwidth]{L01_fico_distribution_good_bad.png}
+      \vspace{1pt}
+      \begin{center}\footnotesize
+        FICO separates good and bad borrowers. IV $>$ 0.30 confirms it is the \B{strongest} model predictor.
+      \end{center}
+  \end{columns}
+\end{frame}
+
+% Slide: Storm building — rising defaults over time
+\begin{frame}{A Storm Building Since 2015}
+  \begin{center}
+    \includegraphics[width=0.78\textwidth]{L01_loan_volume_default_rate.png}
+  \end{center}
+  \vspace{-6pt}
+  \begin{columns}[T]
+    \column{0.48\textwidth}
+      \begin{block}{Training Window 2007--2015}\small
+        Default rate $\approx$18.6\% --- stable. WoE bins fitted on this period.
+      \end{block}
+    \column{0.48\textwidth}
+      \begin{alertblock}{OOT 2016--2018: The First Warning}\small
+        Default rate jumps to \B{25.3\%} (+6.7pp). First signal of population drift, confirmed later by \B{Score PSI = 0.282}.
+      \end{alertblock}
+  \end{columns}
+\end{frame}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Act III \textemdash{} Building the Model}
+% ══════════════════════════════════════════════════════════════════════════════
+
+% Slide: PD architecture — building a judge that can be cross-examined
+\begin{frame}{A Judge That Can Be Cross-Examined}
+  \begin{columns}[T]
+    \column{0.52\textwidth}
+      \small\textbf{Logistic Regression (statsmodels)}
+      \[\log\frac{P(\text{Good})}{P(\text{Bad})} = \beta_0 + \sum_{j=1}^{39} \beta_j \cdot WoE_j\]
+      \vspace{-4pt}
+      {\small\B{Feature selection:} iterative backward elimination --- remove variable with highest max p-value until all p $< 0.05$ (Wald test).}
+
+      \vspace{3pt}
+      \small\begin{tabular}{ll}
+        \toprule
+        Candidate WoE dummies & 56 \\
+        Retained (significant) & \B{39} \\
+        Raw predictors & 16 \\
+        \bottomrule
+      \end{tabular}
+
+      \vspace{4pt}
+      {\footnotesize Why \texttt{statsmodels}? Proper \B{Wald-test p-values} and confidence intervals required by EBA/GL/2017/16.}
+
+    \column{0.44\textwidth}
+      \begin{block}{PDO Scaling}\small
+        $s_j = -(\hat{\beta}_j \times 28.85)$; sum + intercept offset
+      \end{block}
+      \vspace{4pt}
+      \begin{block}{Calibration ($\delta = +0.3204$)}\small
+        $\hat{P}^{calib} = \sigma(\text{logit}(\hat{P}^{raw}) + \delta)$\\[2pt]
+        \begin{tabular}{lll}
+          & Pre & Post \\
+          Mean PD & 20.2\% & \B{25.3\%} \\
+          HL stat & 10,039 & \B{403} ($-96\%$) \\
+        \end{tabular}
+      \end{block}
+      \vspace{4pt}
+      \begin{exampleblock}{Two PD Variants}\small
+        \textbf{PiT PD} $\to$ IFRS 9 ECL\\
+        \textbf{TtC PD} $\to$ Basel AIRB capital
+      \end{exampleblock}
+  \end{columns}
+\end{frame}
+
+% Slide: Does the model actually work?
+\begin{frame}[shrink=3]{Does Our Model Actually Work?}
+  \begin{columns}[T]
+    \column{0.50\textwidth}
+      \begin{center}
+        \includegraphics[width=0.90\textwidth]{L02_roc_curve.png}
+      \end{center}
+      \footnotesize AUC = 0.694, Gini = 0.387. Curve lies above the diagonal --- genuine discriminatory power confirmed.
+
+    \column{0.46\textwidth}
+      \small\begin{tabular}{llll}
+        \toprule
+        \textbf{Metric} & \textbf{Value} & \textbf{Bench.} & \\
+        \midrule
+        AUC      & 0.694  & $> 0.65$    & \yes \\
+        Gini     & 0.387  & $\geq 0.40$ & \warn \\
+        KS       & 0.281  & $> 0.25$    & \yes \\
+        Brier    & 0.172  & $\leq 0.20$ & \yes \\
+        Mean PD  & 25.3\% & Matches DR  & \yes \\
+        Score PSI& 0.282  & $< 0.25$    & \no \\
+        \bottomrule
+      \end{tabular}
+      \vspace{4pt}
+      \begin{alertblock}{Score PSI = 0.282 (ALERT)}\small
+        Population shifted. Model \B{still discriminates} (Gini 0.387 maintained) but requires rebuild on recent data.
+      \end{alertblock}
+  \end{columns}
+\end{frame}
+
+% Slide: The ranking test — does score order make sense?
+\begin{frame}{The Ranking Test: Does Higher Score Mean Lower Risk?}
+  \begin{center}
+    \includegraphics[width=0.76\textwidth]{L02_decile_analysis.png}
+  \end{center}
+  \vspace{-6pt}
+  \begin{columns}[T]
+    \column{0.48\textwidth}
+      \begin{exampleblock}{Monotonic Ordering \yes}\small
+        Bad rate decreases \B{strictly} Decile 1$\to$10 --- \B{zero violations}. Mandatory acceptance criterion (Siddiqi, 2006).
+      \end{exampleblock}
+    \column{0.48\textwidth}
+      \begin{block}{Bad Borrower Concentration}\small
+        Deciles 1--3 capture \B{$>50\%$ of bad borrowers} (only 30\% of portfolio). Directly validates the auto-reject rule for the F class.
+      \end{block}
+  \end{columns}
+\end{frame}
+
+% Slide: Discovering the model was underpredicting — the dramatic turn
+\begin{frame}{Plot Twist: The Model Was Systematically Underpredicting}
+  \begin{columns}[T]
+    \column{0.48\textwidth}
+      \begin{center}
+        \includegraphics[width=\textwidth]{L02_calibration_reliability_diagram.png}
+      \end{center}
+
+    \column{0.48\textwidth}
+      \small\B{Before:} mean PD = 20.2\% vs actual 25.3\%. All decile points fall \B{below} the 45\textdegree\ diagonal --- systematic under-prediction.
+
+      \vspace{5pt}
+      \small\B{After:} $\delta = +0.3204$ brings mean PD to 25.3\%. Points align with the diagonal.
+
+      \vspace{5pt}
+      \begin{alertblock}{The Financial Stakes}\small
+        Without calibration:\\
+        EL under-estimated by \B{+\$158M (24\%)}\\
+        ECL under-estimated by \B{+\$267M (20\%)}\\
+        Stage 2 pool too small by \B{13.2pp}
+      \end{alertblock}
+      \vspace{3pt}
+      \centering\small\textit{Calibration is not cosmetic.\\It cascades through every regulatory output.}
+  \end{columns}
+\end{frame}
+
+% Slide: Seeing the population through its scores
+\begin{frame}{Seeing the Borrower Population Through Its Scores}
+  \begin{columns}[T]
+    \column{0.50\textwidth}
+      \includegraphics[width=\textwidth]{L02_score_distribution_good_bad.png}
+      \vspace{1pt}
+      \footnotesize Good borrowers cluster at \B{higher scores}; bad at \B{lower scores}. The 500--650 overlap is where the ROI-based policy adds value.
+
+    \column{0.46\textwidth}
+      \includegraphics[width=\textwidth]{L02_risk_class_distribution.png}
+      \vspace{1pt}
+      \footnotesize Portfolio concentrates in \B{BB--C} bands. Auto-approve (AA/A) and auto-reject (F) cover the tail extremes. Most decisions use the ROI rule.
+  \end{columns}
+\end{frame}
+
+% Slide: Who gets the loan — the credit policy engine
+\begin{frame}{Who Gets the Loan? The 10-Class Policy Engine}
+  \begin{columns}[T]
+    \column{0.48\textwidth}
+      \small\begin{center}
+        \begin{tabular}{lll}
+          \toprule
+          \textbf{Class} & \textbf{Score} & \textbf{Decision} \\
+          \midrule
+          \textcolor{okgreen}{\textbf{AA}} & 780--850 & \textcolor{okgreen}{Auto-Approve} \\
+          \textcolor{okgreen}{\textbf{A}}  & 740--779 & \textcolor{okgreen}{Auto-Approve} \\
+          AB--CD & 700--539 & Approve if ROI $> r_f$ \\
+          DD     & 460--499 & Manual Review \\
+          \textcolor{alertred}{\textbf{F}}  & 300--459 & \textcolor{alertred}{Auto-Reject} \\
+          \bottomrule
+        \end{tabular}
+      \end{center}
+      \vspace{4pt}
+      \small\textbf{ROI formula:}
+      \[ROI_{ann} = \frac{\text{interest income} - EL}{\text{funded\_amnt} \times \frac{term}{12}}\]
+      \footnotesize$r_f = 2.15\%$ (US base rate at time of data)
+
+    \column{0.48\textwidth}
+      \begin{exampleblock}{ECOA Compliance}\small
+        Every rejection generates up to \B{4 adverse action codes} derived from scorecard contributions.\\[2pt]
+        e.g.\ ``AA02 --- Debt-to-income ratio too high''
+      \end{exampleblock}
+      \vspace{3pt}
+      \includegraphics[width=\textwidth,height=0.36\textheight,keepaspectratio]{L02_pd_model_coefficients.png}
+      \vspace{-2pt}
+      \footnotesize All 39 WoE dummies significant (p $<$ 0.05). Positive = lower default risk; negative = higher risk.
+  \end{columns}
+\end{frame}
+
+% Slide: LGD — what is actually lost when things go wrong
+\begin{frame}{When Things Go Wrong: How Much Do We Actually Lose?}
+  \begin{columns}[T]
+    \column{0.46\textwidth}
+      \includegraphics[width=\textwidth]{L03_recovery_rate_distribution.png}
+      \vspace{1pt}
+      \footnotesize $\approx$50\% zero recovery justifies two-stage design.
+
+    \column{0.50\textwidth}
+      \small\textbf{Stage 1 --- Logistic:} $P(RR > 0)$\\[2pt]
+      \small\textbf{Stage 2 --- Linear:} $E[RR \mid RR > 0]$\\[2pt]
+      \small\textbf{Combined:} $\hat{LGD} = 1 - \hat{P}_1 \times \hat{RR}_2$
+
+      \vspace{5pt}
+      \small\begin{tabular}{ll}
+        \toprule
+        LGD MAE          & $\approx 5\%$ \\
+        Mean LGD (LR)    & 92.19\% \\
+        Downturn LGD     & \B{93.76\%} \\
+        \bottomrule
+      \end{tabular}
+
+      \vspace{5pt}
+      \begin{alertblock}{Why LGD Is So High}\small
+        Unsecured personal loans $\Rightarrow$ \B{no collateral}. Average recovery only $\approx$8\%. This drives the high EL rate (19.93\%) and capital ratio (34.5\% of EAD).
+      \end{alertblock}
+  \end{columns}
+\end{frame}
+
+% Slide: LGD & EAD residuals — checking our work
+\begin{frame}{Checking Our Work: Model Residuals}
+  \begin{columns}[T]
+    \column{0.48\textwidth}
+      \includegraphics[width=\textwidth]{L03_lgd_residuals.png}
+      \begin{center}\footnotesize
+        \textbf{LGD MAE $\approx$ 5\%}\\
+        Centred around zero. Slight negative skew: conservative underestimate of large recoveries.
+      \end{center}
+
+    \column{0.48\textwidth}
+      \includegraphics[width=\textwidth]{L03_ead_residuals.png}
+      \begin{center}\footnotesize
+        \textbf{EAD MAE $\approx$ 14\%}\\
+        Larger spread than LGD --- predicting \textit{when} default occurs within the loan lifecycle is inherently uncertain. No directional bias.
+      \end{center}
+  \end{columns}
+\end{frame}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Act IV \textemdash{} The Reckoning}
+% ══════════════════════════════════════════════════════════════════════════════
+
+% Slide: Expected Loss — counting the cost
+\begin{frame}{Counting the Cost: \$808 Million in Expected Losses}
+  \begin{columns}[T]
+    \column{0.42\textwidth}
+      \[EL_i = \hat{PD}_i^{PiT} \times \hat{LGD}_i \times \hat{EAD}_i\]
+      \vspace{-2pt}
+      \small\begin{tabular}{ll}
+        \toprule
+        Total EAD   & \$3.26B \\
+        Mean LGD    & 92.19\% \\
+        12-month EL & \B{\$0.808B} \\
+        EL rate     & \B{19.93\%} \\
+        \bottomrule
+      \end{tabular}
+      \vspace{5pt}
+      \begin{alertblock}{Key v4 Correction}\small
+        Prior versions used \B{grade-proxy PD}. Now uses the \B{real calibrated PiT PD} from the scorecard --- a 24\% increase in computed EL.
+      \end{alertblock}
+
+    \column{0.55\textwidth}
+      \includegraphics[width=\textwidth]{L03_expected_loss_by_grade.png}
+      \vspace{1pt}
+      \footnotesize EL rate rises \B{monotonically} A $\to$ G. Steeper than the default rate gradient because lower-grade borrowers also have higher EAD.
+  \end{columns}
+\end{frame}
+
+% Slide: IFRS 9 — sorting borrowers by their future
+\begin{frame}{Sorting Borrowers by Their Future: IFRS 9 Staging}
+  \begin{columns}[T]
+    \column{0.50\textwidth}
+      \small\textbf{SICR Classification:}
+      \begin{itemize}\small
+        \item \textcolor{alertred}{\textbf{Stage 3}} (credit-impaired): 90+ DPD or Charged Off
+        \item \textcolor{itcgold}{\textbf{Stage 2}} (SICR): PD $\geq 2\times$ origin PD \emph{or} $\Delta$PD $\geq 5$pp \emph{or} 30-DPD backstop
+        \item \textcolor{okgreen}{\textbf{Stage 1}} (performing): none of above
+      \end{itemize}
+      \vspace{4pt}
+      \small\textbf{ECL formulas:}
+      \[ECL^{12m} = PD \cdot LGD \cdot EAD \cdot \min\!\left(\tfrac{term}{12},1\right)\]
+      \[ECL^{life} = \sum_{t=1}^{T} \frac{h(1-h)^{t-1} LGD \cdot EAD}{(1+r)^t}\]
+
+    \column{0.46\textwidth}
+      \includegraphics[width=\textwidth]{L03_ifrs9_ecl_staging.png}
+      \vspace{-2pt}
+      \begin{center}\footnotesize
+        \B{Stage 2 dominates} at 71.4\% (\$967M). The calibrated PiT PD of 25.3\% causes many OOT loans to trigger the ``PD doubling'' SICR rule.
+      \end{center}
+  \end{columns}
+\end{frame}
+
+% Slide: IFRS 9 scenarios — preparing for the worst
+\begin{frame}[shrink=5]{Preparing for the Worst: Probability-Weighted Scenario ECL (\S5.5.17)}
+  \begin{columns}[T]
+    \column{0.52\textwidth}
+      \includegraphics[width=\textwidth]{L03_ifrs9_scenario_weighted_ecl.png}
+
+    \column{0.44\textwidth}
+      \small\textbf{Macro satellite model:}
+      \[\Delta\text{logit}(PD) = 0.18\Delta u - 0.10\Delta g\]
+
+      \small\begin{tabular}{llll}
+        \toprule
+        \textbf{Scen.} & \textbf{Wt} & \textbf{PD} & \textbf{ECL} \\
+        \midrule
+        Base     & 50\% & 25.3\% & \$1.60B \\
+        Upside   & 25\% & 18.1\% & \$1.21B \\
+        Downside & 25\% & 40.6\% & \$2.18B \\
+        \midrule
+        \B{Wgtd} & --- & --- & \B{\$1.65B} \\
+        \bottomrule
+      \end{tabular}
+
+      \vspace{4pt}
+      \begin{alertblock}{Non-linearity Uplift}\small
+        Weighted ECL exceeds base by \B{+\$44M}. Downside is +36\% above base. Lifetime ECL is \B{convex in PD}: losses accelerate faster than PD rises.
+      \end{alertblock}
+  \end{columns}
+\end{frame}
+
+% Slide: Basel III — how much safety net does a bank need?
+\begin{frame}[shrink=10]{How Much Safety Net Does a Bank Need? Basel III Capital}
+  \begin{columns}[T]
+    \column{0.50\textwidth}
+      \small\textbf{Retail IRB formula:}
+      \[\rho = 0.03 + 0.16\cdot\frac{1-e^{-35 PD}}{1-e^{-35}}\]
+      \[PD_{WC} = \Phi\!\left(\frac{\Phi^{-1}(PD) + \sqrt{\rho}\,\Phi^{-1}(0.999)}{\sqrt{1-\rho}}\right)\]
+      \[K = LGD_{DT}(PD_{WC} - PD), \quad RWA = 12.5\,K\,EAD\]
+      \vspace{2pt}
+      \footnotesize$LGD_{DT} = 93.76\%$ (downturn; 1.25$\times$ haircut, Basel CRE36)
+
+    \column{0.46\textwidth}
+      \begin{block}{The Answer: \$1.13B}\small
+        \begin{tabular}{ll}
+          \toprule
+          Total EAD         & \$3.26B \\
+          IRB RWA           & \B{\$14.07B} \\
+          Min Capital (8\%) & \B{\$1.13B} \\
+          Capital / EAD     & \B{34.5\%} \\
+          \bottomrule
+        \end{tabular}
+      \end{block}
+      \vspace{4pt}
+      \begin{alertblock}{Why the Ratio Is Unusually High}\small
+        Capital scales with \B{LGD through the AIRB formula}. At LGD $\approx$93\%, unexpected losses are large. Secured portfolios (LGD $\approx$40--60\%) carry far lower capital ratios.
+      \end{alertblock}
+  \end{columns}
+\end{frame}
+
+% Slide: The full picture
+\begin{frame}[shrink=8]{The Full Picture: From a Single Loan to a \$3.26B Portfolio}
+  \begin{columns}[T]
+    \column{0.46\textwidth}
+      \begin{block}{Complete Risk Stack}\footnotesize
+        \begin{tabular}{ll}
+          \toprule
+          \multicolumn{2}{l}{\textit{Model outputs}} \\
+          Total EAD           & \$3.26B \\
+          Mean LGD (LR)       & 92.19\% \\
+          Downturn LGD        & 93.76\% \\
+          \midrule
+          \multicolumn{2}{l}{\textit{Expected loss}} \\
+          12-month EL         & \$0.808B \\
+          EL rate (\% EAD)    & 19.93\% \\
+          \midrule
+          \multicolumn{2}{l}{\textit{IFRS 9 lifetime ECL}} \\
+          Base scenario       & \$1.601B \\
+          Upside              & \$1.205B \\
+          Downside            & \$2.176B \\
+          \textbf{Weighted}   & \textbf{\$1.646B} \\
+          vs 12m EL uplift    & \textbf{+\$838M (+104\%)} \\
+          \midrule
+          \multicolumn{2}{l}{\textit{Basel III capital}} \\
+          IRB RWA             & \$14.07B \\
+          Min Capital         & \$1.13B \\
+          Capital / EAD       & 34.5\% \\
+          \bottomrule
+        \end{tabular}
+      \end{block}
+
+    \column{0.50\textwidth}
+      \includegraphics[width=\textwidth]{L03_vintage_analysis.png}
+      \vspace{1pt}
+      \footnotesize Predicted PD tracks actual default rate across vintage cohorts. \B{2016+ cohorts} show widening gap --- the quantitative signal for a model rebuild.
+  \end{columns}
+\end{frame}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Act V \textemdash{} The Warning}
+% ══════════════════════════════════════════════════════════════════════════════
+
+% Slide: PSI Alert — the warning we hoped not to see
+\begin{frame}{The Alert We Hoped Not to See: PSI = 0.282}
+  \begin{columns}[T]
+    \column{0.50\textwidth}
+      \includegraphics[width=\textwidth]{L04_psi_master_dashboard.png}
+      \vspace{1pt}
+      \footnotesize Score PSI bar is in the \textcolor{alertred}{\B{red ALERT zone}} at 0.282. Several CSI bars also elevated --- root-cause signals for which features drive the drift.
+
+    \column{0.46\textwidth}
+      \small\textbf{PSI thresholds:}
+      \begin{center}\small
+        \begin{tabular}{lll}
+          \toprule
+          \textbf{PSI} & \textbf{Status} & \textbf{Action} \\
+          \midrule
+          $< 0.10$      & \textcolor{okgreen}{Stable}  & None \\
+          $0.10$--$0.25$& \textcolor{itcgold}{Monitor} & Investigate \\
+          $> 0.25$      & \textcolor{alertred}{Alert}  & Rebuild \\
+          \bottomrule
+        \end{tabular}
+      \end{center}
+      \vspace{4pt}
+      \small$PSI = \sum_i (O_i - E_i)\ln(O_i/E_i)$\\
+      {\footnotesize $O_i$ = OOT bin proportion, $E_i$ = Training bin proportion}
+      \vspace{4pt}
+      \begin{alertblock}{Score PSI = \textbf{0.282}}\small
+        \B{ALERT.} Model discriminates (Gini 0.387 maintained) but the applicant population has changed materially --- retrain on 2016--2018 data is recommended.
+      \end{alertblock}
+  \end{columns}
+\end{frame}
+
+% Slide: Who changed — the population shift
+\begin{frame}{Who Changed? Diagnosing the Population Shift}
+  \begin{columns}[T]
+    \column{0.48\textwidth}
+      \includegraphics[width=\textwidth]{L04_score_psi_distribution.png}
+      \vspace{1pt}
+      \footnotesize \B{OOT population} (2016--2018) shifted to \B{lower scores} vs training. Consistent with 25.3\% OOT default rate vs 18.6\% training rate.
+
+    \column{0.48\textwidth}
+      \includegraphics[width=\textwidth]{L04_characteristic_stability_index.png}
+      \vspace{1pt}
+      \footnotesize \B{CSI by variable}: high-IV predictors (greatest scorecard contribution) are also the most unstable --- flagged for re-binning in the next model build.
+  \end{columns}
+\end{frame}
+
+% Slide: Champion/Challenger — challenging our own model
+\begin{frame}{Is There a Better Model? Challenging the Champion}
+  \begin{columns}[T]
+    \column{0.48\textwidth}
+      \includegraphics[width=\textwidth]{L04_champion_challenger.png}
+      \vspace{1pt}
+      \begin{exampleblock}{Verdict: Keep Champion}\small
+        Challenger Gini $\approx$ 0.387 --- identical. Mann-Whitney U: not significant ($< 2$pp threshold). \B{Next challenger: XGBoost/LightGBM}.
+      \end{exampleblock}
+
+    \column{0.48\textwidth}
+      \small\textbf{Reject Inference (Parceling):}
+      \vspace{3pt}
+      \begin{center}\small
+        \begin{tabular}{lll}
+          \toprule
+          & Original & Augmented \\
+          & (831K)   & (857K) \\
+          \midrule
+          Gini    & 0.3874 & 0.3879 \\
+          AUC     & 0.6937 & 0.6940 \\
+          Mean PD & 20.2\% & \B{20.7\%} \\
+          \bottomrule
+        \end{tabular}
+      \end{center}
+      \vspace{3pt}
+      \begin{block}{Interpretation}\small
+        Discrimination: unchanged. Meaningful effect on \B{PD level}: +0.52pp correction toward the true population default rate.
+      \end{block}
+  \end{columns}
+\end{frame}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Act VI \textemdash{} The Rebuild}
+% ══════════════════════════════════════════════════════════════════════════════
+
+% Slide: Why rebuild — PSI alert triggered it
+\begin{frame}[shrink=8]{The Alert Triggered a Rebuild: Strategy}
+  \begin{columns}[T]
+    \column{0.50\textwidth}
+      \begin{alertblock}{Trigger: Score PSI = 0.282}\footnotesize
+        Champion (2007--2015) operates outside its training domain. Rebuild required.
+      \end{alertblock}
+      \vspace{3pt}
+      \footnotesize\textbf{Rebuild Strategy:}
+      \begin{itemize}\footnotesize
+        \item \B{Retain} WoE bin structure from L01
+        \item \B{Re-estimate} logistic $\hat\beta$ on 2016--2017 data
+        \item \B{Calibrate} to 2018 observed DR (25.33\%)
+        \item \B{Evaluate} on 2018 holdout vs Champion
+      \end{itemize}
+      \vspace{3pt}
+      \footnotesize\begin{tabular}{llll}
+        \toprule
+        \textbf{Set} & \textbf{Years} & \textbf{Rows} & \textbf{DR} \\
+        \midrule
+        Champ train   & 2007--15 & 831K & 18.6\% \\
+        Rebuild train & 2016--17 & 475K & 25.3\% \\
+        Holdout       & 2018     & 64K  & 25.3\% \\
+        \bottomrule
+      \end{tabular}
+
+    \column{0.46\textwidth}
+      \begin{block}{What Changes vs What Stays}\footnotesize
+        \begin{tabular}{lcc}
+          \toprule
+          \textbf{Component} & \textbf{Champ} & \textbf{Rebuilt} \\
+          \midrule
+          WoE bins   & 2007--15 & 2007--15 \\
+          $\hat\beta$ & 2007--15 & \B{2016--17} \\
+          $\delta$   & $+0.320$ & \B{$+0.067$} \\
+          Features   & 56 & \B{39} \\
+          \bottomrule
+        \end{tabular}
+      \end{block}
+      \vspace{3pt}
+      \begin{exampleblock}{Why Same WoE Bins?}\footnotesize
+        Re-binning requires the full raw pipeline. Re-estimating logistic weights is the ``fast-track'' rebuild --- corrects level bias, updates risk weights, no architecture change.
+      \end{exampleblock}
+  \end{columns}
+\end{frame}
+
+% Slide: Rebuild results — Champion vs Rebuilt
+\begin{frame}[shrink=8]{The Rebuild Works: +1.9pp Gini, Calibration Corrected}
+  \begin{columns}[T]
+    \column{0.52\textwidth}
+      \includegraphics[width=\textwidth]{L05_champion_vs_rebuilt_roc_calibration.png}
+      \vspace{1pt}
+      \footnotesize Rebuilt ROC (orange dashed) lies above Champion (blue). Right: decile calibration --- Rebuilt aligns to actual DR (red bars).
+
+    \column{0.44\textwidth}
+      \footnotesize\begin{tabular}{lll@{\hspace{4pt}}l}
+        \toprule
+        \textbf{Metric} & \textbf{Champ} & \textbf{Rebuilt} & \textbf{$\Delta$} \\
+        \midrule
+        AUC     & 0.682 & 0.692 & $+0.010$ \\
+        Gini    & 0.364 & 0.383 & $+0.019$ \\
+        KS      & 0.268 & 0.280 & $+0.012$ \\
+        Brier   & 0.175 & 0.173 & $-0.002$ \\
+        Mean PD & 24.7\% & \B{25.3\%} & $+0.6$pp \\
+        \bottomrule
+      \end{tabular}
+      \vspace{3pt}
+      \begin{exampleblock}{Verdict: Strong Challenger}\footnotesize
+        Gini $+1.9$pp --- just below 2pp promotion threshold. All metrics improved. Full WoE re-binning is the next step before formal promotion.
+      \end{exampleblock}
+      \vspace{2pt}
+      \footnotesize\textit{Champion $-0.62$pp underprediction eliminated.\\ PSI(Champ vs Rebuilt on 2018) = 0.009 (STABLE).}
+  \end{columns}
+\end{frame}
+
+% Slide: Vintage chart — the full story
+\begin{frame}[shrink=5]{The Full Story: Champion Drift and Rebuilt Correction}
+  \begin{center}
+    \includegraphics[width=0.80\textwidth,height=0.52\textheight,keepaspectratio]{L05_yearly_pd_vs_actual_dr.png}
+  \end{center}
+  \vspace{-4pt}
+  \begin{columns}[T]
+    \column{0.48\textwidth}
+      \begin{block}{2007--2015: Champion Tracks Well}\small
+        Trained on this window --- predicted PD follows observed DR closely.
+      \end{block}
+    \column{0.48\textwidth}
+      \begin{alertblock}{2016--2018: Drift and Correction}\small
+        Champion underestimates. Rebuilt ($\star$) anchors at 25.3\% --- the correct 2018 level.
+      \end{alertblock}
+  \end{columns}
+\end{frame}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Epilogue \textemdash{} What We Learned}
+% ══════════════════════════════════════════════════════════════════════════════
+
+% Slide: Key findings — what the journey revealed
+\begin{frame}{What the Journey Revealed: Six Findings}
+  \begin{columns}[T]
+    \column{0.48\textwidth}
+      \begin{block}{\small 1. Calibration is financially material}\footnotesize
+        Without $\delta = +0.3204$: EL under-stated by \B{\$158M (24\%)}, ECL by \B{\$267M (20\%)}, Stage~2 pool by \B{13.2pp}.
+      \end{block}
+      \vspace{4pt}
+      \begin{block}{\small 2. Lifetime ECL $\gg$ 12-month EL}\footnotesize
+        \$1.646B vs \$0.808B --- uplift \B{+\$838M (+104\%)}. Stage~2 loans (74.2\%) carry lifetime ECL under IFRS~9.
+      \end{block}
+      \vspace{4pt}
+      \begin{block}{\small 3. LGD drives everything}\footnotesize
+        LGD 92.19\% $\Rightarrow$ capital ratio 34.5\% of EAD. Unsecured portfolios require far more capital than secured lending.
+      \end{block}
+
+    \column{0.48\textwidth}
+      \begin{block}{\small 4. Discrimination adequate, calibration needed}\footnotesize
+        Gini 0.387, KS 0.281 meet benchmarks. Post-calibration HL statistic drops 96\%.
+      \end{block}
+      \vspace{4pt}
+      \begin{alertblock}{\small 5. The population has shifted}\footnotesize
+        Score PSI 0.282 (ALERT). Model ranks borrowers correctly but operates outside its training domain. Rebuild required.
+      \end{alertblock}
+      \vspace{4pt}
+      \begin{alertblock}{\small 6. The production gap is vast}\footnotesize
+        Reject inference, OOT splitting, PiT/TtC calibration, IFRS~9 staging, Basel capital, ECOA codes, PSI monitoring --- this is the gap this project crosses.
+      \end{alertblock}
+  \end{columns}
+\end{frame}
+
+% Slide: Honest about limitations
+\begin{frame}{Being Honest: What We Got Wrong and What We Couldn't Do}
+  \begin{columns}[T]
+    \column{0.48\textwidth}
+      \begin{alertblock}{Model Limitations}\footnotesize
+        \begin{enumerate}
+          \item \B{RAROC +299\% inflated}: computed on full portfolio. Meaningful RAROC requires approved-only subset.
+          \item \B{Score PSI = 0.282 (ALERT)}: model needs retrain on 2016--2018 cohort.
+          \item \B{Reject inference limited}: only 3.1\% synthetic rows; full correction requires real rejected-loan data.
+        \end{enumerate}
+      \end{alertblock}
+
+    \column{0.48\textwidth}
+      \begin{alertblock}{Regulatory Limitations}\footnotesize
+        \begin{enumerate}
+          \setcounter{enumi}{3}
+          \item \B{Macro sensitivities literature-based}: $\beta_{unem}$, $\beta_{GDP}$ need empirical estimation from this dataset's time series.
+          \item \B{No external validation}: OOT holdout only. SR~11-7 \S4 independent review not yet performed.
+          \item \B{P2P context}: LGD 93\% is specific to unsecured consumer lending --- not transferable to secured portfolios.
+        \end{enumerate}
+      \end{alertblock}
+  \end{columns}
+\end{frame}
+
+% Slide: What comes next
+\begin{frame}[shrink=5]{What Comes Next}
+  \begin{columns}[T]
+    \column{0.48\textwidth}
+      \begin{exampleblock}{Short-term (Next Iteration)}\small
+        \begin{enumerate}
+          \item \yes\ \B{PD rebuild} on 2016--2017 data --- completed (Act VI). Full WoE re-binning remains.
+          \item \B{Gradient boosting challenger} (XGBoost / LightGBM) with SHAP for adverse action code generation
+          \item \B{Empirical macro sensitivities} from dataset time-series
+        \end{enumerate}
+      \end{exampleblock}
+
+    \column{0.48\textwidth}
+      \begin{exampleblock}{Medium-term (Production)}\small
+        \begin{enumerate}
+          \setcounter{enumi}{3}
+          \item \B{Independent model validation} (SR 11-7 \S4) before any regulatory use
+          \item \B{RAROC on approved-only subset} for meaningful risk-adjusted return
+          \item \B{Airflow DAG productionisation} and Grafana dashboard completion
+        \end{enumerate}
+      \end{exampleblock}
+  \end{columns}
+\end{frame}
+
+% Slide: Conclusion — closing the story
+\begin{frame}[shrink=5]{The Journey Doesn't End Here --- But We've Crossed the Gap}
+  \begin{columns}[T]
+    \column{0.52\textwidth}
+      \begin{block}{What We Built}\small
+        An end-to-end, reproducible credit risk platform on 2.26M Lending Club loans integrating:
+        \begin{itemize}\small
+          \item WoE logistic scorecard with SR 11-7 governance
+          \item IFRS 9 three-stage ECL with scenario weighting
+          \item Basel III AIRB capital calculation
+          \item Daily PSI/CSI monitoring with alerting
+          \item 10-class credit policy + ECOA adverse action codes
+        \end{itemize}
+      \end{block}
+      \vspace{4pt}
+      \begin{exampleblock}{Verified}\small
+        All 4 notebooks ran end-to-end on the real dataset with \B{zero errors} (v4 run, 2026-06-07).
+      \end{exampleblock}
+
+    \column{0.44\textwidth}
+      \small\textbf{The Numbers:}
+      \begin{center}\small
+        \begin{tabular}{ll}
+          \toprule
+          Gini (OOT) & 0.387 \\
+          AUC (OOT)  & 0.694 \\
+          Score PSI  & 0.282 \textcolor{alertred}{ALERT}\\
+          \midrule
+          12m EL     & \$0.808B \\
+          IFRS 9 ECL & \$1.646B \\
+          RWA        & \$14.07B \\
+          Capital    & \$1.13B \\
+          \bottomrule
+        \end{tabular}
+      \end{center}
+      \vspace{6pt}
+      \small\textit{``The gap between a trained model and a production-grade, regulatory-compliant credit risk system is large. This project maps and crosses that gap.''}
+  \end{columns}
+\end{frame}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\begin{frame}[plain]
+  \begin{center}
+    \vspace{0.8cm}
+    {\color{itcblue}\Huge\textbf{Thank You}}\\[10pt]
+    {\large Questions \& Discussion}\\[16pt]
+    \rule{0.55\textwidth}{0.4pt}\\[8pt]
+    {\small
+      SOPHON Rachana $\cdot$ LOT Soklang $\cdot$ DUK Pagnarith $\cdot$ LENG Devid\\[4pt]
+      Supervised by \textbf{Lecturer TOEM TOUCH}\\[4pt]
+      Institute of Technology of Cambodia\\
+      Academic Year 2025--2026
+    }
+  \end{center}
+\end{frame}
+
+% ══════════════════════════════════════════════════════════════════════════════
+%  APPENDIX
+% ══════════════════════════════════════════════════════════════════════════════
+\appendix
+
+\begin{frame}{Backup: Score-to-PD Conversion}
+  \begin{columns}[T]
+    \column{0.52\textwidth}
+      \includegraphics[width=\textwidth]{L02_score_pd_conversion.png}
+    \column{0.44\textwidth}
+      \small The score-to-PD mapping is monotonically decreasing. Every 20-point increase halves default odds (PDO = 20). Reference: score 600 at odds 1:1. This mapping is the basis for IFRS~9 SICR classification and ECOA adverse action documentation.
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Backup: CCF Distribution}
+  \begin{columns}[T]
+    \column{0.52\textwidth}
+      \includegraphics[width=\textwidth]{L03_ccf_distribution.png}
+    \column{0.44\textwidth}
+      \small CCF is right-skewed with mass near 1.0. Most defaults occur early before significant repayment. Median CCF $>$ 0.8 means EAD typically exceeds 80\% of funded amount.
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Backup: PSI by Variable Type}
+  \begin{columns}[T]
+    \column{0.48\textwidth}
+      \includegraphics[width=\textwidth]{L04_psi_continuous_variables.png}
+      \vspace{1pt}
+      \footnotesize Continuous CSI: red bars ($>0.25$) are primary drivers of score shift.
+    \column{0.48\textwidth}
+      \includegraphics[width=\textwidth]{L04_psi_discrete_variables.png}
+      \vspace{1pt}
+      \footnotesize Discrete CSI: categorical mix shift in the 2016--2018 OOT population.
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Backup: PD Calibration Impact}
+  \begin{center}\small
+    \begin{tabular}{llll}
+      \toprule
+      \textbf{Output} & \textbf{Pre-calib.} & \textbf{Post-calib.} & \textbf{$\Delta$} \\
+      \midrule
+      Mean PD               & 20.18\% & 25.27\% & $+5.09$pp \\
+      H-L statistic         & 10,039  & 403     & $-96\%$ \\
+      IRB RWA               & \$13.62B & \$14.07B & $+$\$0.45B \\
+      IRB Min Capital       & \$1.09B  & \$1.13B  & $+$\$0.04B \\
+      Capital / EAD         & 33.4\%   & 34.5\%   & $+1.1$pp \\
+      12-month EL           & \$0.650B & \$0.808B & $+$\$0.158B (+24\%) \\
+      IFRS 9 lifetime ECL   & \$1.334B & \$1.601B & $+$\$0.267B (+20\%) \\
+      IFRS 9 Stage 2 mix    & 61.0\%   & 74.2\%   & $+13.2$pp \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+  \vspace{4pt}
+  \small Calibration is not cosmetic --- it cascades through every regulatory output.
+\end{frame}
+
+\begin{frame}{Backup: Reject Inference Detail}
+  \begin{center}\small
+    \begin{tabular}{llll}
+      \toprule
+      \textbf{Metric} & \textbf{Original (831K)} & \textbf{Augmented (857K)} & \textbf{$\Delta$} \\
+      \midrule
+      AUC         & 0.6937 & 0.6940 & $+0.0003$ \\
+      Gini        & 0.3874 & 0.3879 & $+0.05$pp \\
+      KS          & 0.2813 & 0.2816 & $+0.0003$ \\
+      Brier Score & 0.1750 & 0.1751 & $+0.0001$ \\
+      Mean OOT PD & 20.18\% & 20.70\% & $+0.52$pp \\
+      Train DR    & 18.62\% & 20.35\% & $+1.73$pp \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+  \vspace{4pt}
+  \small Discrimination unchanged (3.1\% synthetic rows). Meaningful effect on PD level only.
+\end{frame}
+
+\end{document}

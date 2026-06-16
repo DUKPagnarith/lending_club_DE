@@ -1,0 +1,32 @@
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {6.1}{\ignorespaces Loan volume and default rate by issue year.\relax }}{23}{figure.caption.8}%
+\contentsline {figure}{\numberline {6.2}{\ignorespaces Default rate by Lending Club internal grade (A--G).\relax }}{24}{figure.caption.9}%
+\contentsline {figure}{\numberline {6.3}{\ignorespaces FICO score distribution for good and bad borrowers.\relax }}{25}{figure.caption.10}%
+\contentsline {figure}{\numberline {6.4}{\ignorespaces ROC curve on the OOT test set (AUC = 0.694).\relax }}{27}{figure.caption.12}%
+\contentsline {figure}{\numberline {6.5}{\ignorespaces Bad rate by score decile on the OOT test set.\relax }}{28}{figure.caption.13}%
+\contentsline {figure}{\numberline {6.6}{\ignorespaces Credit score distribution for good and bad borrowers.\relax }}{28}{figure.caption.14}%
+\contentsline {figure}{\numberline {6.7}{\ignorespaces Scorecard score mapped to calibrated PiT PD.\relax }}{29}{figure.caption.15}%
+\contentsline {figure}{\numberline {6.8}{\ignorespaces Reliability diagram before and after PD calibration.\relax }}{30}{figure.caption.16}%
+\contentsline {figure}{\numberline {6.9}{\ignorespaces Logistic regression coefficients for the 39 significant WoE dummies.\relax }}{31}{figure.caption.17}%
+\contentsline {figure}{\numberline {6.10}{\ignorespaces Distribution of OOT loans across the 10 risk classes.\relax }}{32}{figure.caption.18}%
+\contentsline {figure}{\numberline {6.11}{\ignorespaces Recovery rate distribution on charged-off loans.\relax }}{33}{figure.caption.20}%
+\contentsline {figure}{\numberline {6.12}{\ignorespaces LGD model residuals (actual minus predicted recovery rate).\relax }}{34}{figure.caption.21}%
+\contentsline {figure}{\numberline {6.13}{\ignorespaces Credit Conversion Factor distribution on charged-off loans.\relax }}{34}{figure.caption.22}%
+\contentsline {figure}{\numberline {6.14}{\ignorespaces EAD model residuals (actual minus predicted CCF).\relax }}{35}{figure.caption.23}%
+\contentsline {figure}{\numberline {6.15}{\ignorespaces Expected Loss rate by Lending Club grade.\relax }}{36}{figure.caption.24}%
+\contentsline {figure}{\numberline {6.16}{\ignorespaces IFRS\nobreakspace {}9 three-stage ECL breakdown by count and provision.\relax }}{36}{figure.caption.25}%
+\contentsline {figure}{\numberline {6.17}{\ignorespaces IFRS\nobreakspace {}9 ECL under three macro scenarios and the weighted total.\relax }}{37}{figure.caption.26}%
+\contentsline {figure}{\numberline {6.18}{\ignorespaces Predicted PD vs actual default rate by origination year.\relax }}{38}{figure.caption.27}%
+\contentsline {figure}{\numberline {6.19}{\ignorespaces PSI master dashboard: Score PSI and variable-level CSI.\relax }}{40}{figure.caption.29}%
+\contentsline {figure}{\numberline {6.20}{\ignorespaces Score distribution: training vs OOT monitoring population.\relax }}{41}{figure.caption.30}%
+\contentsline {figure}{\numberline {6.21}{\ignorespaces CSI for continuous model input variables.\relax }}{42}{figure.caption.31}%
+\contentsline {figure}{\numberline {6.22}{\ignorespaces CSI for categorical model input variables.\relax }}{43}{figure.caption.32}%
+\contentsline {figure}{\numberline {6.23}{\ignorespaces CSI across all 39 model inputs, ranked by severity.\relax }}{43}{figure.caption.33}%
+\contentsline {figure}{\numberline {6.24}{\ignorespaces Champion vs challenger Gini comparison.\relax }}{44}{figure.caption.34}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }

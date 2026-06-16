@@ -4,6 +4,7 @@ Applies all three models to the full portfolio and writes to risk.expected_loss.
 Run standalone or called by Airflow batch scoring DAG.
 """
 import os, sys, json, pickle
+import joblib
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 import numpy as np
@@ -40,9 +41,12 @@ def compute_portfolio_el(run_date: str = None):
     run_date = run_date or datetime.date.today().isoformat()
 
     print(f"Loading models for EL calculation ({run_date})...")
-    with open(f"{MODEL_DIR}/pd_model.pkl",  'rb') as f: pd_model  = pickle.load(f)
-    with open(f"{MODEL_DIR}/lgd_model.pkl", 'rb') as f: lgd_model = pickle.load(f)
-    with open(f"{MODEL_DIR}/ead_model.pkl", 'rb') as f: ead_model = pickle.load(f)
+    # Use scorecard + stage pkl artifacts (produced by notebooks and DAG-04)
+    scorecard  = pd.read_csv(f"{DATA_DIR}/scorecard.csv")
+    lgd_stage1 = joblib.load(f"{MODEL_DIR}/lgd_stage1.pkl")
+    lgd_stage2 = joblib.load(f"{MODEL_DIR}/lgd_stage2.pkl")
+    ead_model  = joblib.load(f"{MODEL_DIR}/ead_model.pkl")
+    ead_scaler = joblib.load(f"{MODEL_DIR}/ead_scaler.pkl")
 
     test = pd.read_parquet(f"{DATA_DIR}/test_preprocessed.parquet")
     with open(f"{DATA_DIR}/dummy_cols.json") as f:
@@ -51,15 +55,27 @@ def compute_portfolio_el(run_date: str = None):
     avail  = [c for c in dummy_cols if c in test.columns]
     X_test = test[avail].fillna(0)
 
-    # ── PD ────────────────────────────────────────────────────────────────
-    pd_pred  = pd_model.predict_proba(X_test)
-    scores   = pd_model.compute_scores(X_test)
+    # ── PD from scorecard ─────────────────────────────────────────────────
+    FACTOR = 20 / np.log(2)
+    OFFSET = 600.0
+    score_map = dict(zip(scorecard["Feature"], scorecard["Score"]))
+    scores = pd.Series(OFFSET, index=test.index)
+    for feat, sc in score_map.items():
+        if feat in X_test.columns:
+            scores += X_test[feat].astype(float) * sc
+    scores = scores.round().clip(300, 850).astype(int)
+    log_odds = (scores - OFFSET) / FACTOR
+    p_good   = np.exp(log_odds) / (1 + np.exp(log_odds))
+    pd_pred  = (1 - p_good).values
 
-    # ── LGD ───────────────────────────────────────────────────────────────
-    lgd_pred = lgd_model.predict_lgd(X_test)
+    # ── LGD (two-stage) ───────────────────────────────────────────────────
+    rp       = lgd_stage1.predict_proba(X_test)[:, 1]
+    ra       = lgd_stage2.predict(X_test).clip(0, 1)
+    lgd_pred = np.clip(1 - rp * ra, 0, 1)
 
     # ── EAD ───────────────────────────────────────────────────────────────
-    ead_pred = ead_model.predict_ead(X_test, test['funded_amnt'].values)
+    ccf      = ead_model.predict(ead_scaler.transform(X_test)).clip(0, 1)
+    ead_pred = ccf * test['funded_amnt'].fillna(0).values
 
     # ── Expected Loss ─────────────────────────────────────────────────────
     el = pd_pred * lgd_pred * ead_pred

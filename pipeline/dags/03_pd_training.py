@@ -5,6 +5,7 @@ Runs: manually triggered after cleaning
 from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.python import PythonOperator
+from airflow.sensors.external_task import ExternalTaskSensor
 
 default_args = {"owner": "credit_risk", "retries": 1, "retry_delay": timedelta(minutes=5)}
 
@@ -76,4 +77,13 @@ with DAG(
     tags=["credit_risk", "ml", "pd"],
 ) as dag:
 
+    wait_for_features = ExternalTaskSensor(
+        task_id="wait_for_feature_engineering",
+        external_dag_id="credit_risk_feature_engineering",
+        external_task_id="encode_woe_dummies",
+        timeout=3600, poke_interval=30, mode="reschedule",
+    )
+
     train_task = PythonOperator(task_id="train_pd_model", python_callable=train_pd)
+
+    wait_for_features >> train_task

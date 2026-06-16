@@ -15,8 +15,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Credit Risk Scoring API",
-    description="Real-time PD / LGD / EAD scoring — Lending Club credit risk model",
-    version="1.0.0",
+    description="Real-time PD / LGD / EAD / IFRS 9 scoring — Lending Club credit risk model",
+    version="2.0.0",
     lifespan=lifespan,
 )
 
@@ -31,7 +31,7 @@ def health():
     return HealthResponse(
         status="ok" if models["loaded"] else "degraded",
         models_loaded=models["loaded"],
-        version="1.0.0",
+        version="2.0.0",
     )
 
 

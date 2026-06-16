@@ -1,0 +1,15 @@
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {3.1}{\ignorespaces Raw dataset properties\relax }}{15}{table.caption.5}%
+\contentsline {table}{\numberline {3.2}{\ignorespaces Out-of-time data split\relax }}{16}{table.caption.6}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {4.1}{\ignorespaces 10-class credit policy: score bands and decisioning rules\relax }}{19}{table.caption.7}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {6.1}{\ignorespaces PD model performance on the OOT test set (post-calibration).\relax }}{26}{table.caption.11}%
+\contentsline {table}{\numberline {6.2}{\ignorespaces Downstream impact of PD calibration ($\delta = +0.3204$).\relax }}{32}{table.caption.19}%
+\contentsline {table}{\numberline {6.3}{\ignorespaces Portfolio-level risk outputs (calibrated PiT PD, OOT test set).\relax }}{39}{table.caption.28}%
+\contentsline {table}{\numberline {6.4}{\ignorespaces Reject inference (parceling): impact on OOT PD metrics.\relax }}{45}{table.caption.35}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }

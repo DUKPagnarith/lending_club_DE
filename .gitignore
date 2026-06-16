@@ -9,6 +9,8 @@
 secrets/
 
 # ── Datasets (large files – store in MinIO / DVC / external storage) ──────────
+data/
+chroma_db/
 data/raw/
 data/processed/
 data/reports/

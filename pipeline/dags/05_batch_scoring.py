@@ -4,12 +4,9 @@ DAG 05 — Batch score OOT test set → risk.expected_loss table in PostgreSQL
 from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.python import PythonOperator
+from airflow.sensors.external_task import ExternalTaskSensor
 
 default_args = {"owner": "credit_risk", "retries": 1, "retry_delay": timedelta(minutes=5)}
-
-FEATURES = ["funded_amnt", "term_int", "int_rate", "dti", "fico_score",
-            "annual_inc", "revol_util", "inq_last_6mths"]
-
 
 def batch_score(**ctx):
     import os, json, joblib
@@ -32,7 +29,7 @@ def batch_score(**ctx):
 
     test = pd.read_parquet(f"{DATA}/test_preprocessed.parquet")
 
-    # Credit scores
+    # Credit scores (from WoE dummy columns, same as notebooks)
     FACTOR = 20 / np.log(2)
     OFFSET = 600.0
     score_map = dict(zip(scorecard["Feature"], scorecard["Score"]))
@@ -48,9 +45,9 @@ def batch_score(**ctx):
     p_good   = np.exp(log_odds) / (1 + np.exp(log_odds))
     pd_vals  = 1 - p_good
 
-    # LGD & EAD
-    feats   = [c for c in FEATURES if c in test.columns]
-    X_risk  = test[feats].fillna(test[feats].median())
+    # LGD & EAD — use WoE dummy columns (same features models were trained on)
+    feats   = [c for c in dummy_cols if c in test.columns]
+    X_risk  = test[feats].fillna(0)
     recovery_prob = lgd_stage1.predict_proba(X_risk)[:, 1]
     recovery_amt  = lgd_stage2.predict(X_risk).clip(0, 1)
     lgd_vals      = (1 - recovery_prob * recovery_amt).clip(0, 1)
@@ -91,4 +88,13 @@ with DAG(
     tags=["credit_risk", "scoring"],
 ) as dag:
 
+    wait_for_lgd = ExternalTaskSensor(
+        task_id="wait_for_lgd_ead_training",
+        external_dag_id="credit_risk_lgd_ead_training",
+        external_task_id="train_lgd_ead",
+        timeout=3600, poke_interval=30, mode="reschedule",
+    )
+
     score_task = PythonOperator(task_id="batch_score_loans", python_callable=batch_score)
+
+    wait_for_lgd >> score_task

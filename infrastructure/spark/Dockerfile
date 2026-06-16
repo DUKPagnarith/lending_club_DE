@@ -1,4 +1,7 @@
-FROM bitnami/spark:3.5.0
+# Bitnami deprecated its public Docker Hub catalog in 2025; the old public tags
+# (bitnami/spark:3.5.0) were removed and archived under the `bitnamilegacy` org.
+# This image keeps the SPARK_MODE master/worker entrypoint the compose file uses.
+FROM bitnamilegacy/spark:3.5.0
 USER root
 RUN pip install --no-cache-dir \
     pandas>=2.0.0 \
